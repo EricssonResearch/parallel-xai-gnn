@@ -1,12 +1,14 @@
 # deep learning libraries
 import torch
+import numpy as np
 import pandas as pd
 import torch.nn.functional as F
 from torch_geometric.data import InMemoryDataset
-from torch_geometric.utils import subgraph
+from scipy.sparse import lil_matrix
 
 # other libraries
 import os
+import time
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from tqdm.auto import tqdm
@@ -23,7 +25,7 @@ from src.explain.methods import (
     GuidedBackprop,
     GNNExplainer,
 )
-from src.explain.parallel_xai import parallel_xai
+from src.explain.executions import original_xai, parallel_xai
 
 
 # set seed and device
@@ -75,9 +77,21 @@ def main() -> None:
 
             explainer: Explainer = SaliencyMap(model)
 
-            # parallel explainability
-            parallel_xai(
+            # compute feature maps
+            start = time.time()
+            original_feature_maps: lil_matrix = original_xai(
+                explainer, x, edge_index, node_ids, test_mask, device=device
+            )
+            print(time.time() - start)
+            start = time.time()
+            parallel_feature_maps: lil_matrix = parallel_xai(
                 explainer, x, edge_index, node_ids, test_mask, 64, device=device
+            )
+            print(time.time() - start)
+
+            equal: bool = np.allclose(
+                original_feature_maps[original_feature_maps != 0].todense(),
+                parallel_feature_maps[parallel_feature_maps != 0].todense(),
             )
 
 

@@ -201,6 +201,7 @@ class SaliencyMap(Explainer):
         return inputs.grad
 
     # overriding
+    @torch.no_grad()
     def explain(
         self, x: torch.Tensor, edge_index: torch.Tensor, node_id: int
     ) -> torch.Tensor:
@@ -211,11 +212,6 @@ class SaliencyMap(Explainer):
         if gradients is None:
             raise RuntimeError("Error in gradient computation")
         feature_maps = torch.mean(torch.abs(gradients), dim=1)
-
-        # normalize
-        min_ = torch.amin(feature_maps)
-        max_ = torch.amax(feature_maps)
-        feature_maps = (feature_maps - min_) / (max_ - min_)
 
         return feature_maps
 
