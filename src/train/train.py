@@ -23,6 +23,13 @@ SAVE_PATH = "models"
 
 
 def main() -> None:
+    """
+    This is the function to train the models.
+
+    Raises:
+        ValueError: Invalid model_name.
+    """
+
     # define variables
     dataset_name: Literal["Cora", "CiteSeer", "PubMed"] = "Cora"
     model_name: Literal["gcn", "gat"] = "gcn"
@@ -30,6 +37,12 @@ def main() -> None:
     # define hyperparameters
     lr: float = 1e-3
     epochs: int = 1000
+
+    # empty nohup file
+    open("nohup.out", "w").close()
+
+    # check device
+    print(f"device: {device}")
 
     # define name and tensorboard writer
     name: str = f"{dataset_name}_{model_name}"

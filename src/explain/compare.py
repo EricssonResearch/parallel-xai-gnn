@@ -71,21 +71,31 @@ def main() -> None:
             edge_index: torch.Tensor = dataset[0].edge_index.long().to(device)
             test_mask: torch.Tensor = dataset[0].test_mask.to(device)
             node_ids: torch.Tensor = torch.arange(x.shape[0]).to(device)
-            
+
             # init individual tensors
-            individual_xai: torch.Tensor = torch.empty((len(node_ids), len(node_ids)), device=device)
+            individual_xai: torch.Tensor = torch.empty(
+                (len(node_ids), len(node_ids)), device=device
+            )
 
             explainer: Explainer = SaliencyMap(model)
 
             # compute parallel explainability
             for node_id in node_ids:
                 individual_xai[node_id] = explainer.explain(x, edge_index, node_id)
-                
+
             # compute individual xai
             batch_xai = explainer.explain(x, edge_index, node_ids)
             batch_xai = batch_xai.repeat(len(node_ids), 1)
-            
-            print(torch.mean(torch.abs(individual_xai[individual_xai!=0] - batch_xai[individual_xai!=0])))
+
+            print(
+                torch.mean(
+                    torch.abs(
+                        individual_xai[individual_xai != 0]
+                        - batch_xai[individual_xai != 0]
+                    )
+                )
+            )
+
 
 if __name__ == "__main__":
     main()
