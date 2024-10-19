@@ -75,7 +75,7 @@ class DeConvNet(Explainer):
         self.model.zero_grad()
         max_scores[node_id].backward()
 
-        return inputs.grad
+        return inputs.grad.clone()
 
     # overriding
     def explain(
@@ -194,11 +194,16 @@ class SaliencyMap(Explainer):
         outputs = self.model(inputs, edge_index)
         max_scores = torch.amax(outputs, dim=1)
 
-        # clear previous gradients and backward pass
-        self.model.zero_grad()
+        # backward pass
         max_scores[node_ids].sum().backward()
 
-        return inputs.grad
+        # compute gradients
+        gradients = inputs.grad.clone()
+
+        # clear previous gradients
+        self.model.zero_grad()
+
+        return gradients
 
     # overriding
     @torch.no_grad()
@@ -209,6 +214,7 @@ class SaliencyMap(Explainer):
         gradients: Optional[torch.Tensor] = self._compute_gradients(
             x, edge_index, node_id
         )
+
         if gradients is None:
             raise RuntimeError("Error in gradient computation")
         feature_maps = torch.mean(torch.abs(gradients), dim=1)
@@ -218,7 +224,8 @@ class SaliencyMap(Explainer):
 
 class SmoothGrad(Explainer):
     """
-    This class creates smoothgrad saliency map visualizations. This class inherits from SaliencyMap class
+    This class creates smoothgrad saliency map visualizations.
+    This class inherits from SaliencyMap class.
 
     Attributes:
         model for classifying images

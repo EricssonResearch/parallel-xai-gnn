@@ -50,7 +50,8 @@ class GCN(torch.nn.Module):
 
         Args:
             inputs: node matrix. Dimensions: [batch size, input size]
-            edge_index: edge index tensor that represents the adj matrix. Dimensions: [2, number of edges]
+            edge_index: edge index tensor that represents the adj
+                matrix. Dimensions: [2, number of edges]
 
         Returns:
             predictions of the classes. Dimensions: [batch size, output size]

@@ -1,6 +1,7 @@
 # deep lerning libraries
 import torch
-from torchmetrics.classification import MulticlassAccuracy
+
+# from torchmetrics.classification import MulticlassAccuracy
 from torch.utils.tensorboard import SummaryWriter
 from torch_geometric.data import InMemoryDataset
 
@@ -67,7 +68,7 @@ def main() -> None:
     optimizer: torch.optim.Optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
     # define metrics
-    accuracy: torch.nn.Module = MulticlassAccuracy(dataset.num_classes).to(device)
+    # accuracy: torch.nn.Module = MulticlassAccuracy(dataset.num_classes).to(device)
 
     # pass elements to correct device
     x: torch.Tensor = dataset[0].x.float().to(device)
@@ -93,11 +94,11 @@ def main() -> None:
 
         # writer on tensorboard
         writer.add_scalar("loss/train", loss_value.item(), epoch)
-        writer.add_scalar(
-            "accuracy/train",
-            accuracy(outputs[train_mask, :], y[train_mask]).item(),
-            epoch,
-        )
+        # writer.add_scalar(
+        #     "accuracy/train",
+        #     accuracy(outputs[train_mask, :], y[train_mask]).item(),
+        #     epoch,
+        # )
 
         # activate eval mode
         model.eval()
@@ -108,11 +109,11 @@ def main() -> None:
             outputs = model(x, edge_index)
 
             # write on tensorboard
-            writer.add_scalar(
-                "accuracy/val",
-                accuracy(outputs[val_mask, :], y[val_mask]).item(),
-                epoch,
-            )
+            # writer.add_scalar(
+            #     "accuracy/val",
+            #     accuracy(outputs[val_mask, :], y[val_mask]).item(),
+            #     epoch,
+            # )
 
     # create dirs to save model
     if not os.path.exists(f"{SAVE_PATH}"):

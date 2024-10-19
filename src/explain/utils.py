@@ -1,32 +1,29 @@
 # ai libraries
 import torch
+from torch_geometric.utils.map import map_index
+from torch_geometric.utils.mask import index_to_mask
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 from scipy.sparse import lil_matrix, coo_matrix
 
 # other libraries
-from typing import Optional, Literal
+from typing import Optional, Literal, Union
 
 
 def k_hop_subgraph(
-    node_idx: int | list[int] | torch.Tensor,
+    node_idx: torch.Tensor,
     num_hops: int,
     edge_index: torch.Tensor,
-    relabel_nodes: bool = False,
-    num_nodes: Optional[int] = None,
-    flow: str = "source_to_target",
-    directed: bool = False,
+    directed: bool = True,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
-    _summary_
+    This function generates a subgraph with k hops.
 
     Args:
-        node_idx: _description_
-        num_hops: _description_
-        edge_index: _description_
-        relabel_nodes: _description_. Defaults to False.
-        num_nodes: _description_. Defaults to None.
-        flow: _description_. Defaults to 'source_to_target'.
-        directed: _description_. Defaults to False.
+        node_idx: node indexes. Dimensions [number of subset of nodes].
+        num_hops: number of hops for the subgraph.
+        edge_index: edge index tensor. Dimensions: [2, number of edges].
+        directed: If set to True will only include the directed edges
+            to the seed nodes. Defaults to True.
 
     Returns:
         _description_
@@ -72,6 +69,81 @@ def k_hop_subgraph(
     new_edge_index = node_idx[edge_index]
 
     return subset, edge_index, new_edge_index
+
+
+def subgraph(
+    subset: torch.Tensor,
+    edge_index: torch.Tensor,
+    edge_attr: Optional[torch.Tensor] = None,
+    num_nodes: Optional[int] = None,
+    return_edge_mask: bool = False,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    r"""Returns the induced subgraph of :obj:`(edge_index, edge_attr)`
+    containing the nodes in :obj:`subset`.
+
+    Args:
+        subset (LongTensor, BoolTensor or [int]): The nodes to keep.
+        edge_index (LongTensor): The edge indices.
+        edge_attr (Tensor, optional): Edge weights or multi-dimensional
+            edge features. (default: :obj:`None`)
+        relabel_nodes (bool, optional): If set to :obj:`True`, the resulting
+            :obj:`edge_index` will be relabeled to hold consecutive indices
+            starting from zero. (default: :obj:`False`)
+        num_nodes (int, optional): The number of nodes, *i.e.*
+            :obj:`max_val + 1` of :attr:`edge_index`. (default: :obj:`None`)
+        return_edge_mask (bool, optional): If set to :obj:`True`, will return
+            the edge mask to filter out additional edge features.
+            (default: :obj:`False`)
+
+    :rtype: (:class:`LongTensor`, :class:`Tensor`)
+
+    Examples:
+
+        >>> edge_index = torch.tensor([[0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6],
+        ...                            [1, 0, 2, 1, 3, 2, 4, 3, 5, 4, 6, 5]])
+        >>> edge_attr = torch.tensor([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+        >>> subset = torch.tensor([3, 4, 5])
+        >>> subgraph(subset, edge_index, edge_attr)
+        (tensor([[3, 4, 4, 5],
+                [4, 3, 5, 4]]),
+        tensor([ 7.,  8.,  9., 10.]))
+
+        >>> subgraph(subset, edge_index, edge_attr, return_edge_mask=True)
+        (tensor([[3, 4, 4, 5],
+                [4, 3, 5, 4]]),
+        tensor([ 7.,  8.,  9., 10.]),
+        tensor([False, False, False, False, False, False,  True,
+                True,  True,  True,  False, False]))
+    """
+
+    # get device
+    device = edge_index.device
+
+    #
+    if isinstance(subset, (list, tuple)):
+        subset = torch.tensor(subset, dtype=torch.long, device=device)
+
+    if subset.dtype != torch.bool:
+        num_nodes = maybe_num_nodes(edge_index, num_nodes)
+        node_mask = index_to_mask(subset, size=num_nodes)
+    else:
+        num_nodes = subset.size(0)
+        node_mask = subset
+        subset = node_mask.nonzero().view(-1)
+
+    edge_mask = node_mask[edge_index[0]] & node_mask[edge_index[1]]
+    edge_index = edge_index[:, edge_mask]
+    edge_attr = edge_attr[edge_mask] if edge_attr is not None else None
+
+    new_edge_index, _ = map_index(
+        edge_index.view(-1),
+        subset,
+        max_index=num_nodes,
+        inclusive=True,
+    )
+    new_edge_index = new_edge_index.view(2, -1)
+
+    return edge_index, new_edge_index
 
 
 def normalize_sparse_matrix(

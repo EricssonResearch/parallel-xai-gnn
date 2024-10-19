@@ -9,16 +9,10 @@ from scipy.sparse import lil_matrix
 
 # other libraries
 import os
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
-from tqdm.auto import tqdm
-from typing import Literal, Type
 
 # own modules
-from src.train.models import GCN, GAT
-from src.utils import set_seed, load_data
 from src.explain.methods import Explainer
-from src.explain.utils import k_hop_subgraph
+from src.explain.utils import k_hop_subgraph, subgraph
 
 
 def original_xai(
@@ -51,6 +45,7 @@ def original_xai(
     return global_feature_maps
 
 
+@torch.no_grad()
 def parallel_xai(
     explainer: Explainer,
     x: torch.Tensor,
@@ -59,14 +54,16 @@ def parallel_xai(
     test_mask: torch.Tensor,
     num_parts: int,
     num_hops: int = 3,
+    dropout_rate: float = 0.0,
     device: torch.device = torch.device("cpu"),
-) -> lil_matrix:
+) -> tuple[lil_matrix, int, int]:
     """
     This function computes XAI in a parallel way.
 
     Args:
         explainer: explainer to use.
-        x: _description_
+        x: node matrix. Dimensions: [number of nodes,
+            number of node features].
         edge_index: _description_
         node_ids: _description_
         test_mask: _description_
@@ -91,9 +88,7 @@ def parallel_xai(
     ).to(device)
 
     # compute partitions
-    cluster_data: ClusterData = ClusterData(
-        data, num_parts=num_parts, keep_inter_cluster_edges=False
-    )
+    cluster_data: ClusterData = ClusterData(data, num_parts=num_parts)
 
     # load extended batches
     for cluster_id in range(len(cluster_data)):
@@ -104,6 +99,24 @@ def parallel_xai(
         re_ids, re_edge_index, re_edge_index_relabelled = k_hop_subgraph(
             cluster.node_ids, num_hops, data.edge_index
         )
+
+        # reduce reconstruction if dropout rate is higher than 1
+        if dropout_rate > 0.0:
+            # compute clone node ids
+            cloned_node_ids: torch.Tensor = ~torch.isin(re_ids, cluster.node_ids)
+
+            # define mask
+            dropout_mask: torch.Tensor = torch.rand(
+                cloned_node_ids.sum(), device=device
+            )
+            dropout_mask = dropout_mask < dropout_rate
+
+            # compute filter ids
+            filter_ids: torch.Tensor = re_ids[cloned_node_ids][dropout_mask]
+
+            # filter out non_reconstructed nodes
+            re_ids = re_ids[~torch.isin(re_ids, filter_ids)]
+            re_edge_index, re_edge_index_relabelled = subgraph(re_ids, re_edge_index)
 
         # compute batch index for each element
         cloned_node_ids: torch.Tensor = ~torch.isin(re_ids, cluster.node_ids)
@@ -180,4 +193,8 @@ def parallel_xai(
             feature_map[feature_map != 0].cpu().numpy()
         )
 
-    return global_feature_maps
+    return (
+        global_feature_maps,
+        data_extended.x.shape[0],
+        data_extended.edge_index.shape[1],
+    )
