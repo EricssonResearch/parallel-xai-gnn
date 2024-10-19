@@ -47,7 +47,7 @@ METHODS: dict[str, Type[Explainer]] = {
 DATASETS_NAME: tuple[Literal["Cora", "CiteSeer", "PubMed"], ...] = ("Cora",)
 MODEL_NAMES: tuple[Literal["gcn", "gat"], ...] = ("gcn",)
 CLUSTER_SIZES: tuple[int, ...] = (8, 16, 32, 64, 128)
-DROPOUT_RATES: tuple[float, ...] = (0.0, 0.2, 0.5, 0.7)
+DROPOUT_RATES: tuple[float, ...] = (0.0, 0.2, 0.5, 0.7, 1.0)
 
 
 @torch.no_grad
@@ -70,12 +70,13 @@ def main() -> None:
         range(
             len(DATASETS_NAME)
             * len(MODEL_NAMES)
-            * len(METHODS)
+            # * len(METHODS)
             * len(CLUSTER_SIZES)
             * len(DROPOUT_RATES)
         )
     )
 
+    # iter over dataset, model and method
     for dataset_name in DATASETS_NAME:
         for model_name in MODEL_NAMES:
             # define dataset

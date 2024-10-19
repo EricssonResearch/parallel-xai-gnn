@@ -29,13 +29,8 @@ def k_hop_subgraph(
         _description_
     """
 
-    num_nodes = maybe_num_nodes(edge_index, num_nodes)
-
-    assert flow in ["source_to_target", "target_to_source"]
-    if flow == "target_to_source":
-        row, col = edge_index
-    else:
-        col, row = edge_index
+    num_nodes = maybe_num_nodes(edge_index, None)
+    col, row = edge_index
 
     node_mask = row.new_empty(num_nodes, dtype=torch.bool)
     edge_mask = row.new_empty(row.size(0), dtype=torch.bool)
