@@ -1,22 +1,29 @@
 # ai libraries
 import torch
+import numpy as np
 from torch_geometric.utils.map import map_index
 from torch_geometric.utils.mask import index_to_mask
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 from scipy.sparse import lil_matrix, coo_matrix
 
 # other libraries
-from typing import Optional, Literal, Union
+from typing import Optional, Literal
 
 
 def k_hop_subgraph(
     node_idx: torch.Tensor,
     num_hops: int,
     edge_index: torch.Tensor,
-    directed: bool = True,
+    flow: Literal["target_to_source", "source_to_target"] = "source_to_target",
+    directed: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
-    This function generates a subgraph with k hops.
+    This function generates a subgraph with k hops. The twon main
+    changes with respect to pytorch geometric are the following two:
+    - It returns the edge index, without relabelling and with
+    relabelling.
+    - The directed flag is actiavated by default, since we only need
+    the directed edges for the k-hop subgpraph.
 
     Args:
         node_idx: node indexes. Dimensions [number of subset of nodes].
@@ -26,11 +33,20 @@ def k_hop_subgraph(
             to the seed nodes. Defaults to True.
 
     Returns:
-        _description_
+        subset of nodes. Dimensions: [number of nodes in the subset,
+            number of node features].
+        edge index without relabelling. Dimensions: [2,
+            number of edges in the subset].
+        edge index with relabelling. Dimensions: [2,
+            number of edges in the subset].
     """
 
     num_nodes = maybe_num_nodes(edge_index, None)
-    col, row = edge_index
+
+    if flow == "target_to_source":
+        row, col = edge_index
+    else:
+        col, row = edge_index
 
     node_mask = row.new_empty(num_nodes, dtype=torch.bool)
     edge_mask = row.new_empty(row.size(0), dtype=torch.bool)
@@ -71,7 +87,6 @@ def subgraph(
     edge_index: torch.Tensor,
     edge_attr: Optional[torch.Tensor] = None,
     num_nodes: Optional[int] = None,
-    return_edge_mask: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     r"""Returns the induced subgraph of :obj:`(edge_index, edge_attr)`
     containing the nodes in :obj:`subset`.
