@@ -22,7 +22,7 @@ def k_hop_subgraph(
     changes with respect to pytorch geometric are the following two:
     - It returns the edge index, without relabelling and with
     relabelling.
-    - The directed flag is actiavated by default, since we only need
+    - The directed flag is activated by default, since we only need
     the directed edges for the k-hop subgpraph.
 
     Args:

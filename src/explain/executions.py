@@ -85,6 +85,7 @@ def parallel_xai(
     # pass data to the right device
     data = data.to(device)
 
+    # compute extended data
     data_extended: Data = get_extended_data(
         data, num_clusters, num_hops, dropout_rate, device
     )

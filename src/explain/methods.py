@@ -208,12 +208,15 @@ class SaliencyMap(Explainer):
     # overriding
     @torch.no_grad()
     def explain(
-        self, x: torch.Tensor, edge_index: torch.Tensor, node_id: int
+        self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: int
     ) -> torch.Tensor:
         # compute saliency maps
         gradients: Optional[torch.Tensor] = self._compute_gradients(
-            x, edge_index, node_id
+            x, edge_index, node_ids
         )
+
+        # filter out own node
+        gradients[node_ids] = 0
 
         if gradients is None:
             raise RuntimeError("Error in gradient computation")
