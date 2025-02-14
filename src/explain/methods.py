@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 
 
 class Explainer(ABC):
-    def __init__(self, model: torch.nn.Module, *args):
+    def __init__(self, model: torch.nn.Module):
         """
         Constructor for Explainer class
 
@@ -28,6 +28,21 @@ class Explainer(ABC):
         self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: torch.Tensor
     ) -> torch.Tensor:
         pass
+
+
+# class GradientExplainer(Explainer):
+
+#     def __init__(self, model: torch.nn.Module):
+#         """
+#         Constructor for Explainer class
+
+#         Args:
+#             model: pytorch model
+#         """
+
+#         self.model = model
+
+#     def
 
 
 class DeConvNet(Explainer):
@@ -81,12 +96,35 @@ class DeConvNet(Explainer):
     def explain(
         self, x: torch.Tensor, edge_index: torch.Tensor, node_id: int
     ) -> torch.Tensor:
-        # compute saliency maps
-        gradients: Optional[torch.Tensor] = self._compute_gradients(
-            x, edge_index, node_id
-        )
+        # get device
+        device: torch.device = x.device
+
+        # try gpu execution
+        try:
+            # compute saliency maps
+            gradients: Optional[torch.Tensor] = self._compute_gradients(
+                x, edge_index, node_id
+            )
+
+        except RuntimeError:
+            # pass tensors to cpu
+            x = x.cpu()
+            edge_index = edge_index.cpu()
+            self.model = self.model.cpu()
+
+            # compute saliency maps
+            gradients: Optional[torch.Tensor] = self._compute_gradients(
+                x, edge_index, node_id
+            )
+
+        # handle exception and get back to device
         if gradients is None:
             raise RuntimeError("Error in gradient computation")
+        else:
+            gradients = gradients.to(device)
+            self.model = self.model.to(device)
+
+        # compute feature maps
         feature_maps = torch.mean(torch.abs(gradients), dim=1)
 
         # normalize
@@ -163,12 +201,35 @@ class GuidedBackprop(Explainer):
     def explain(
         self, x: torch.Tensor, edge_index: torch.Tensor, node_id: int
     ) -> torch.Tensor:
-        # compute saliency maps
-        gradients: Optional[torch.Tensor] = self._compute_gradients(
-            x, edge_index, node_id
-        )
+        # get device
+        device: torch.device = x.device
+
+        # try gpu execution
+        try:
+            # compute saliency maps
+            gradients: Optional[torch.Tensor] = self._compute_gradients(
+                x, edge_index, node_id
+            )
+
+        except RuntimeError:
+            # pass tensors to cpu
+            x = x.cpu()
+            edge_index = edge_index.cpu()
+            self.model = self.model.cpu()
+
+            # compute saliency maps
+            gradients: Optional[torch.Tensor] = self._compute_gradients(
+                x, edge_index, node_id
+            )
+
+        # handle exception and get back to device
         if gradients is None:
             raise RuntimeError("Error in gradient computation")
+        else:
+            gradients = gradients.to(device)
+            self.model = self.model.to(device)
+
+        # compute feature maps
         feature_maps = torch.mean(torch.abs(gradients), dim=1)
 
         # normalize
@@ -180,14 +241,53 @@ class GuidedBackprop(Explainer):
 
 
 class SaliencyMap(Explainer):
+    """
+    This class implements a Saliency Map XAI method.
+
+    Attributes:
+        model: model to classify.
+    """
+
     def __init__(self, model: torch.nn.Module) -> None:
+        """
+        This function is the constructor of the SaliencyMap class.
+
+        Args:
+            model: model to classify.
+
+        Returns:
+            None.
+        """
+
         # call super class constructor
         super().__init__(model)
+
+        return None
 
     @torch.enable_grad()
     def _compute_gradients(
         self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: torch.Tensor
-    ) -> Optional[torch.Tensor]:
+    ) -> torch.Tensor:
+        """
+        This method computes the gradients of the outputs with respect
+        to the input.
+
+        Args:
+            x: Node tensor. Dimensions: [number of nodes,
+                number of node features].
+            edge_index: Edge index tensor. Dimensions: [2,
+                number of edges].
+            node_ids: Node ids tensor. Dimensions: [number of ids to
+                explain].
+
+        Raises:
+            RuntimeError: Error in gradient computation.
+
+        Returns:
+            Gradients tensor. Dimensions: [number of nodes,
+                number of node features].
+        """
+
         # forward pass
         inputs = x.clone()
         inputs.requires_grad_(True)
@@ -197,29 +297,64 @@ class SaliencyMap(Explainer):
         # backward pass
         max_scores[node_ids].sum().backward()
 
+        # raise exception
+        if inputs.grad is None:
+            raise RuntimeError("Error in gradient computation")
+
         # compute gradients
         gradients = inputs.grad.clone()
 
-        # clear previous gradients
-        self.model.zero_grad()
-
         return gradients
 
-    # overriding
+    # Overriding
     @torch.no_grad()
     def explain(
         self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: int
     ) -> torch.Tensor:
-        # compute saliency maps
-        gradients: Optional[torch.Tensor] = self._compute_gradients(
-            x, edge_index, node_ids
-        )
+        """
+        This method computes the explainability of node matrix.
 
-        # filter out own node
-        gradients[node_ids] = 0
+        Args:
+            x: Node matrix. Dimensions: [number of nodes, number of
+                node features].
+            edge_index: Edge index. Dimensions: [2, number of edges].
+            node_ids: Node ids. Dimensions: [number of node ids].
 
-        if gradients is None:
-            raise RuntimeError("Error in gradient computation")
+        Returns:
+            Saliency Map explainability unnormalized. Dimensions:
+                [number of nodes].
+        """
+
+        # Try gpu execution
+        gradients: torch.Tensor
+        try:
+            # Compute saliency maps
+            gradients = self._compute_gradients(x, edge_index, node_ids)
+
+        except RuntimeError as e:
+            # Catch exception only if it´s from cuda
+            if "out of memory" in str(e):
+                # get device
+                device: torch.device = x.device
+
+                # pass tensors to cpu
+                x = x.cpu()
+                edge_index = edge_index.cpu()
+                node_ids = node_ids.cpu()
+                self.model = self.model.cpu()
+
+                # compute saliency maps
+                gradients = self._compute_gradients(x, edge_index, node_ids)
+
+                # get back to device
+                gradients = gradients.to(device)
+                node_ids = node_ids.to(device)
+                self.model = self.model.to(device)
+
+            else:
+                raise e
+
+        # compute feature maps
         feature_maps = torch.mean(torch.abs(gradients), dim=1)
 
         return feature_maps

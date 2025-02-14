@@ -12,14 +12,15 @@ scikit-learn==1.5.1
 scipy==1.14.1
 tensorboard==2.17.1
 -f https://download.pytorch.org/whl/cu121
-torch==2.4.0
--f https://data.pyg.org/whl/torch-2.4.0+cu121.html
+torch==2.4.1
+-f https://data.pyg.org/whl/torch-2.4.1+cu121.html
+torchmetrics==1.6.1
 torch-cluster==1.6.3
-torch-geometric==2.5.0
--f https://data.pyg.org/whl/torch-2.4.0+cu121.html
+torch-geometric==2.6.1
+-f https://data.pyg.org/whl/torch-2.4.1+cu121.html
 torch-scatter==2.1.2
--f https://data.pyg.org/whl/torch-2.4.0+cu121.html
+-f https://data.pyg.org/whl/torch-2.4.1+cu121.html
 torch-sparse==0.6.18
--f https://data.pyg.org/whl/torch-2.4.0+cu121.html
+-f https://data.pyg.org/whl/torch-2.4.1+cu121.html
 torch-spline-conv==1.2.2
 tqdm==4.64.0

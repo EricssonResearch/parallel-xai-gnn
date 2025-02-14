@@ -1,12 +1,15 @@
-# deep lerning libraries
-import torch
+"""
+This module contains code to train.
+"""
 
-# from torchmetrics.classification import MulticlassAccuracy
-from torch.utils.tensorboard import SummaryWriter
-from torch_geometric.data import InMemoryDataset
-
-# other libraries
+# standard libraries
 import os
+
+# 3pps
+import torch
+from torch.utils.tensorboard import SummaryWriter
+from torchmetrics.classification import MulticlassAccuracy
+from torch_geometric.data import InMemoryDataset
 from tqdm.auto import tqdm
 from typing import Literal
 
@@ -33,7 +36,7 @@ def main() -> None:
 
     # define variables
     dataset_name: Literal["Cora", "CiteSeer", "PubMed"] = "Cora"
-    model_name: Literal["gcn", "gat"] = "gcn"
+    model_name: Literal["gcn", "gat"] = "gat"
 
     # define hyperparameters
     lr: float = 1e-3
@@ -68,7 +71,7 @@ def main() -> None:
     optimizer: torch.optim.Optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
     # define metrics
-    # accuracy: torch.nn.Module = MulticlassAccuracy(dataset.num_classes).to(device)
+    accuracy: torch.nn.Module = MulticlassAccuracy(dataset.num_classes).to(device)
 
     # pass elements to correct device
     x: torch.Tensor = dataset[0].x.float().to(device)
@@ -94,11 +97,11 @@ def main() -> None:
 
         # writer on tensorboard
         writer.add_scalar("loss/train", loss_value.item(), epoch)
-        # writer.add_scalar(
-        #     "accuracy/train",
-        #     accuracy(outputs[train_mask, :], y[train_mask]).item(),
-        #     epoch,
-        # )
+        writer.add_scalar(
+            "accuracy/train",
+            accuracy(outputs[train_mask, :], y[train_mask]).item(),
+            epoch,
+        )
 
         # activate eval mode
         model.eval()
@@ -109,11 +112,11 @@ def main() -> None:
             outputs = model(x, edge_index)
 
             # write on tensorboard
-            # writer.add_scalar(
-            #     "accuracy/val",
-            #     accuracy(outputs[val_mask, :], y[val_mask]).item(),
-            #     epoch,
-            # )
+            writer.add_scalar(
+                "accuracy/val",
+                accuracy(outputs[val_mask, :], y[val_mask]).item(),
+                epoch,
+            )
 
     # create dirs to save model
     if not os.path.exists(f"{SAVE_PATH}"):

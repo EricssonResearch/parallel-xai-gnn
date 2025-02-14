@@ -1,20 +1,22 @@
-# deep learning libraries
+"""
+This module contains the main function to execute explainability 
+experiments.
+"""
+
+# standard libraries
+import os
+import time
+
+# 3pps
 import torch
 import numpy as np
 import pandas as pd
 from torch_geometric.data import InMemoryDataset, Data
 from scipy.sparse import lil_matrix
-
-# other libraries
-import os
-import time
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
 from tqdm.auto import tqdm
 from typing import Literal, Type
 
 # own modules
-from src.train.models import GCN, GAT
 from src.utils import set_seed, load_data
 from src.explain.methods import (
     Explainer,
@@ -30,7 +32,7 @@ from src.explain.executions import original_xai, parallel_xai
 # set seed and device
 set_seed(42)
 torch.set_num_threads(8)
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+device = torch.device("cuda") if torch.cuda.is_available() else torch.cpu()
 
 # static variables
 DATA_PATH: str = "data"
@@ -38,13 +40,17 @@ LOAD_PATH: str = "models"
 RESULTS_PATH: str = "results"
 METHODS: dict[str, Type[Explainer]] = {
     "Saliency Map": SaliencyMap,
-    "Smoothgrad": SmoothGrad,
-    "Deconvnet": DeConvNet,
-    "Guided-Backprop": GuidedBackprop,
-    "GNNExplainer": GNNExplainer,
+    # "Smoothgrad": SmoothGrad,
+    # "Deconvnet": DeConvNet,
+    # "Guided-Backprop": GuidedBackprop,
+    # "GNNExplainer": GNNExplainer,
 }
-DATASETS_NAME: tuple[Literal["Cora", "CiteSeer", "PubMed"], ...] = ("Cora",)
-MODEL_NAMES: tuple[Literal["gcn", "gat"], ...] = ("gcn",)
+DATASETS_NAME: tuple[Literal["Cora", "CiteSeer", "PubMed"], ...] = (
+    # "Cora",
+    # "CiteSeer",
+    "PubMed",
+)
+MODEL_NAMES: tuple[Literal["gcn", "gat"], ...] = ("gat",)
 NUM_CLUSTERS: tuple[int, ...] = (8, 16, 32, 64, 128)
 DROPOUT_RATES: tuple[float, ...] = (0.0, 0.2, 0.5, 0.7, 1.0)
 
@@ -233,13 +239,7 @@ def main() -> None:
                 f"{RESULTS_PATH}/{dataset_name}_{model_name}.csv", float_format="%.2f"
             )
 
-            # # check if they are equal
-            # equal: bool = c
-
-            # # print if they are equal
-            # print(equal)
-
-    return False
+    return None
 
 
 if __name__ == "__main__":
