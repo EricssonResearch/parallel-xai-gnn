@@ -106,7 +106,7 @@ def parallel_xai(
         sorted=False,
     )
 
-    # iter over bacthes
+    # Iter over batches
     for batch_index in range(num_batches):
         # compute xai ids
         xai_ids: torch.Tensor = new_node_ids[data_extended.batch_indexes == batch_index]
@@ -139,7 +139,7 @@ def parallel_xai(
             feature_map[feature_map != 0].cpu().numpy()
         )
 
-    # normalize
+    # Normalize
     global_feature_maps = normalize_sparse_matrix(global_feature_maps)
 
     return (

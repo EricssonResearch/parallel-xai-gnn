@@ -1,0 +1,104 @@
+[project]
+name = "parallel-xai-gnn"
+version = "0.2.0"
+description = "Parallel XAI GNN"
+authors = [
+    {name = "Oscar Llorente", email = "oscar.llorente.gonzalez@ericsson.com"},
+]
+readme = "README.md"
+requires-python = "==3.11.*"
+dependencies = [
+    "black==23.1.0",
+    "complexipy==1.2.0",
+    "flake8==7.1.2",
+    "Flake8-pyproject==1.2.3",
+    "ipykernel==6.14.0",
+    "matplotlib==3.9.1",
+    "mypy==1.1.1",
+    "numpy==2.0.1",
+    "openpyxl==3.1.5",
+    "pandas==2.2.2",
+    "pyarrow==17.0.0",
+    "pyg-lib==0.4.0",
+    "pylint==3.3.5",
+    "scikit-learn==1.5.1",
+    "scipy==1.14.1",
+    "tensorboard==2.17.1",
+    "torch==2.4.0",
+    "torchmetrics==1.6.1",
+    "torch-cluster==1.6.3",
+    "torch-geometric==2.6.1",
+    "torch-scatter==2.1.2",
+    "torch-sparse==0.6.18",
+    "torch-spline-conv==1.2.2",
+    "tqdm==4.64.0",
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "torch" },
+]
+torch-cluster = [
+    { index = "pyg" },
+]
+torch-scatter = [
+    { index = "pyg" },
+]
+torch-sparse = [
+    { index = "pyg" },
+]
+torch-spline-conv = [
+    { index = "pyg" },
+]
+pyg-lib = [
+    { index = "pyg" },
+]
+
+[[tool.uv.index]]
+name = "torch"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
+
+[[tool.uv.index]]
+name = "pyg"
+url = "https://data.pyg.org/whl/torch-2.4.0+cu121.html"
+format = "flat"
+explicit = true
+
+[tool.black]
+line-length = 88
+exclude = '''
+/(
+  \.venv
+)/
+'''
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = "E203, W503"
+exclude = [
+    ".venv/",
+]
+
+[tool.mypy]
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+    "^(build|dist|venv)",
+    ".venv/",
+]
+cache_dir = "/dev/null"
+
+[tool.pylint]
+max-line-length = 88
+disable = "R0801,R0912,R0913,R0914,R0915,R0917,R1711,R1732,W1203,R0902,W0707,C0114"
+
+[tool.pylint.MASTER]
+ignore-paths = [
+    "src/utils/torch_bayesian/",
+    ".venv/",
+    "eric-csw-common-cicd-pipelines/"
+]
+
+[tool.pylint.typecheck]
+generated-members=["numpy.*", "torch.*"]

@@ -64,13 +64,13 @@ def main() -> None:
         None.
     """
 
-    # empty nohup file
+    # Empty nohup file
     open("nohup.out", "w").close()
 
-    # check device
+    # Check device
     print(f"device: {device}")
 
-    # define progress bar
+    # Define progress bar
     progress_bar = tqdm(
         range(
             len(DATASETS_NAME)
