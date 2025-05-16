@@ -1,12 +1,12 @@
-# ai learning libraries
+# Standard libraries
+from typing import Optional
+
+# 3pps
 import torch
 from torch_geometric.data import Data
 from scipy.sparse import lil_matrix
 
-# other libraries
-from typing import Optional
-
-# own modules
+# Own modules
 from src.explain.methods import Explainer
 from src.explain.cluster import get_extended_data
 from src.explain.sparse import normalize_sparse_matrix
@@ -22,13 +22,14 @@ def original_xai(
     and computing the explainability for each node (without bacthes).
 
     Args:
-        explainer: _description_
+        explainer: Explainer to use.
         data: data object. Attributes: [node_ids, x, edge_index].
         device: device for torch tensors. Defaults to
             torch.device("cpu").
 
     Returns:
-        _description_
+        Global feature maps. Dimension: [number of nodes,
+            number of nodes].
     """
 
     # create feature maps
@@ -75,7 +76,10 @@ def parallel_xai(
         device: device for the tensors. Defaults to cpu.
 
     Returns:
-        _description_
+        Global features maps. Dimensions: [number of nodes,
+            number of nodes].
+        NUmber of nodes in extended matrix.
+        Number of edges in extended matrix.
     """
 
     # create feature maps

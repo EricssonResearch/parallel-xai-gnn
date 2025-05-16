@@ -35,7 +35,15 @@ device: torch.device = (
 )
 
 
+@torch.no_grad()
 def main() -> None:
+    """
+    This is the main function to generate examples.
+
+    Returns:
+        None.
+    """
+
     # Load dataset
     dataset: InMemoryDataset = load_data(DATASET_NAME, f"{DATA_PATH}/{DATASET_NAME}")
 
@@ -64,6 +72,7 @@ def main() -> None:
     return None
 
 
+@torch.no_grad()
 def create_visualization(
     x: torch.Tensor,
     edge_index: torch.Tensor,
@@ -78,7 +87,7 @@ def create_visualization(
         x: Node matrix. Dimensions: [number of nodes, number of node
             features].
         edge_index: Edge index. Dimensions: [2, number of edges].
-        node_ids: _description_
+        node_ids: Node ids. Dimensions: [number of nodes].
         feature_map: Feature map. Dimensions: [number of nodes, number
             of nodes].
         method_name: Method name.
@@ -101,7 +110,7 @@ def create_visualization(
     color_map = []
     alphas = []
     for node in g.nodes():
-        # set the node name as the key and the label as its value
+        # Set the node name as the key and the label as its value
         labels[node] = round(feature_map[node].item(), 2)
         if node != 0:
             color_map.append("#00b4d9")
@@ -127,7 +136,3 @@ def create_visualization(
     plt.close()
 
     return None
-
-
-if __name__ == "__main__":
-    main()

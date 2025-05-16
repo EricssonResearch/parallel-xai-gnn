@@ -88,7 +88,8 @@ def subgraph(
     edge_attr: Optional[torch.Tensor] = None,
     num_nodes: Optional[int] = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    r"""Returns the induced subgraph of :obj:`(edge_index, edge_attr)`
+    """
+    Returns the induced subgraph of :obj:`(edge_index, edge_attr)`
     containing the nodes in :obj:`subset`.
 
     Args:

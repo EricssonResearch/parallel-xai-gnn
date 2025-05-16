@@ -5,6 +5,7 @@ from torch_geometric.loader import ClusterData
 
 # own modules
 from src.explain.utils import k_hop_subgraph, subgraph
+from src.utils import HiddenPrints
 
 
 def get_extended_data(
@@ -32,7 +33,8 @@ def get_extended_data(
     """
 
     # compute partitions
-    cluster_data: ClusterData = ClusterData(data, num_parts=num_clusters)
+    with HiddenPrints():
+        cluster_data: ClusterData = ClusterData(data, num_parts=num_clusters)
 
     # load extended batches
     for cluster_id, _ in enumerate(cluster_data):

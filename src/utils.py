@@ -1,14 +1,30 @@
-# deep learning libraries
+# 3pps
 import torch
 import torch_geometric
 import numpy as np
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.transforms import NormalizeFeatures
 
-# other libraries
+# Standard libraries
 import os
+import sys
 import random
 from typing import Literal
+
+# Static variables
+DATA_PATH: str = "data"
+LOAD_PATH: str = "models"
+DATASETS_NAME: tuple[Literal["Cora", "CiteSeer", "PubMed"], ...] = (
+    "Cora",
+    "CiteSeer",
+    "PubMed",
+)
+MODEL_NAMES: tuple[Literal["gcn", "gat"], ...] = (
+    "gcn",
+    "gat",
+)
+NUM_CLUSTERS: tuple[int, ...] = (1, 8, 16, 32, 64, 128)
+ITERATIONS: float = 3
 
 
 def load_data(
@@ -59,3 +75,21 @@ def set_seed(seed: int) -> None:
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
     return None
+
+
+class HiddenPrints:
+    """
+    This class avoid printing in command line. It is intended to be
+    used as a context manager, using the with statement of python.
+
+    Atributtes:
+        _original_stdout
+    """
+
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, "w")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout

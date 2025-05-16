@@ -1,10 +1,14 @@
-# ai libraries
+"""
+This module contains the code to normalize sparse tensors.
+"""
+
+# Standard libraries
+from typing import Literal, Union
+
+# 3pps
 import torch
 import numpy as np
 from scipy.sparse import lil_matrix, coo_matrix
-
-# other libraries
-from typing import Literal, Union
 
 
 def normalize_sparse_matrix(
