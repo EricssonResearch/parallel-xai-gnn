@@ -3,7 +3,7 @@ This module contains the main function to execute explainability
 experiments.
 """
 
-# standard libraries
+# Standard libraries
 import os
 
 # 3pps

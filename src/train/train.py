@@ -2,8 +2,9 @@
 This module contains code to train.
 """
 
-# standard libraries
+# Standard libraries
 import os
+from typing import Literal
 
 # 3pps
 import torch
@@ -11,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchmetrics.classification import MulticlassAccuracy
 from torch_geometric.data import InMemoryDataset
 from tqdm.auto import tqdm
-from typing import Literal
+
 
 # own modules
 from src.utils import set_seed, load_data

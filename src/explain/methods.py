@@ -254,7 +254,7 @@ class GuidedBackprop(GradientExplainer):
 
         # Define forward hook
         def forward_hook_fn(
-            module: torch.nn.Module, input: torch.Tensor, output: torch.Tensor
+            module: torch.nn.Module, inputs: torch.Tensor, outputs: torch.Tensor
         ) -> None:
             """
             This function is the forward hook.
@@ -269,7 +269,7 @@ class GuidedBackprop(GradientExplainer):
             """
 
             # Save activation maps
-            self.activation_maps.append(output)
+            self.activation_maps.append(outputs)
 
             return None
 
@@ -367,8 +367,10 @@ class SmoothGrad(GradientExplainer):
                 Defaults to 50.
         """
 
+        # Call super class constructor
+        super().__init__(model)
+
         # set noise level and sample size
-        self.model = model
         self.noise_level = noise_level
         self.sample_size = sample_size
 
@@ -452,11 +454,11 @@ class GNNExplainer(Explainer):
             torch_geometric.explain.GNNExplainer(),
             explanation_type="model",
             node_mask_type="object",
-            model_config=dict(
-                mode="multiclass_classification",
-                task_level="node",
-                return_type="raw",
-            ),
+            model_config={
+                "mode": "multiclass_classification",
+                "task_level": "node",
+                "return_type": "raw",
+            },
         )
 
         return None

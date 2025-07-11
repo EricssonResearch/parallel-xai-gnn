@@ -39,7 +39,7 @@ RESULTS_PATH: str = "results/full_reconstruction"
 def main() -> None:
     """
     This is the main function to execute full reconstruction experiment.
-    
+
     Returns:
         None.
     """

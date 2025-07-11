@@ -5,12 +5,11 @@ This module contains the models.
 # 3pps
 import torch
 import torch_geometric
-import torch.nn.functional
 
 
 class GCN(torch.nn.Module):
     """
-    This class defines a model with two GCN layers
+    This class defines a model with two GCN layers.
 
     Attributes:
         conv1: first GNN.
@@ -27,7 +26,7 @@ class GCN(torch.nn.Module):
         prob_drop: float = 0.5,
     ) -> None:
         """
-        This method is the constructor for the GCN class
+        This method is the constructor for the GCN class.
 
         Args:
             input_size: Number of node features.
@@ -55,7 +54,7 @@ class GCN(torch.nn.Module):
 
     def forward(self, inputs: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """
-        This method defines the forward pass
+        This method defines the forward pass.
 
         Args:
             inputs: Node matrix. Dimensions: [batch size, input size].
@@ -78,7 +77,7 @@ class GCN(torch.nn.Module):
 
 class GAT(torch.nn.Module):
     """
-    This class defines a model with two GAT layers
+    This class defines a model with two GAT layers.
 
     Attributes:
         conv1: first GNN
@@ -121,7 +120,7 @@ class GAT(torch.nn.Module):
 
     def forward(self, inputs: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """
-        This method defines the forward pass
+        This method defines the forward pass.
 
         Args:
             inputs: Node matrix. Dimensions: [batch size, input size].

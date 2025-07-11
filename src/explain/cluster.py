@@ -51,7 +51,7 @@ def get_extended_data(
 
             # Define mask
             dropout_mask: torch.Tensor = torch.rand(
-                cloned_node_ids_mask.sum(), device=device
+                int(cloned_node_ids_mask.sum().item()), device=device
             )
             dropout_mask = dropout_mask < dropout_rate
 

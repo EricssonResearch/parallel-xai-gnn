@@ -1,19 +1,12 @@
-# deep learning libraries
-import torch
-import pandas as pd
-import torch.nn.functional as F
-from torch_geometric.data import InMemoryDataset
-from torch_geometric.utils import subgraph
-
-# other libraries
-import os
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
+# Standard libraries
 from tqdm.auto import tqdm
 from typing import Literal, Type
 
-# own modules
-from src.train.models import GCN, GAT
+# 3pps
+import torch
+from torch_geometric.data import InMemoryDataset
+
+# Own modules
 from src.utils import set_seed, load_data
 from src.explain.methods import (
     Explainer,
@@ -69,7 +62,6 @@ def main() -> None:
             # pass elements to correct device
             x: torch.Tensor = dataset[0].x.float().to(device)
             edge_index: torch.Tensor = dataset[0].edge_index.long().to(device)
-            test_mask: torch.Tensor = dataset[0].test_mask.to(device)
             node_ids: torch.Tensor = torch.arange(x.shape[0]).to(device)
 
             # init individual tensors
