@@ -61,7 +61,7 @@ def main() -> None:
     for method_name, method in METHODS.items():
         # Compute feature maps
         explainer = method(model)
-        feature_map: torch.Tensor = explainer.explain(x, edge_index, 0)
+        feature_map: torch.Tensor = explainer.explain(x, edge_index, torch.tensor(0))
         feature_map = (feature_map - feature_map.min()) / (
             feature_map.max() - feature_map.min()
         )

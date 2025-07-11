@@ -5,61 +5,37 @@ experiments.
 
 # standard libraries
 import os
-import time
 
 # 3pps
 import torch
 import numpy as np
 import pandas as pd
 from torch_geometric.data import InMemoryDataset, Data
-from scipy.sparse import lil_matrix
 from tqdm.auto import tqdm
-from typing import Literal, Type
 
-# own modules
-from src.utils import set_seed, load_data
-from src.explain.methods import (
-    Explainer,
-    SaliencyMap,
-    SmoothGrad,
-    DeConvNet,
-    GuidedBackprop,
-    GNNExplainer,
+# Own modules
+from src.utils import (
+    set_seed,
+    load_data,
+    get_device,
+    DATA_PATH,
+    LOAD_PATH,
+    DATASETS_NAME,
+    MODEL_NAMES,
 )
-from src.explain.executions import original_xai, parallel_xai
-
+from src.explain.utils import METHODS, NUM_CLUSTERS, CHECKPOINTS_PATH, DROPOUT_RATES
+from src.explain.methods import Explainer
+from src.explain.executions import compute_xai
 
 # set seed and device
 set_seed(42)
 torch.set_num_threads(8)
-device = torch.device("cuda") if torch.cuda.is_available() else torch.cpu()
 
 # static variables
-DATA_PATH: str = "data"
-LOAD_PATH: str = "models"
-RESULTS_PATH: str = "results"
-METHODS: dict[str, Type[Explainer]] = {
-    "Saliency Map": SaliencyMap,
-    "Smoothgrad": SmoothGrad,
-    "Deconvnet": DeConvNet,
-    "Guided-Backprop": GuidedBackprop,
-    "GNNExplainer": GNNExplainer,
-}
-DATASETS_NAME: tuple[Literal["Cora", "CiteSeer", "PubMed"], ...] = (
-    "Cora",
-    "CiteSeer",
-    "PubMed",
-)
-MODEL_NAMES: tuple[Literal["gcn", "gat"], ...] = (
-    "gcn",
-    "gat",
-)
-NUM_CLUSTERS: tuple[int, ...] = (8, 16, 32, 64, 128)
-DROPOUT_RATES: tuple[float, ...] = (0.0, 0.2, 0.5, 0.7, 1.0)
-ITERATIONS: float = 3
+RESULTS_PATH: str = "results/dropout_reconstruction"
 
 
-@torch.no_grad
+@torch.no_grad()
 def main() -> None:
     """
     This function is the main program for the explain module.
@@ -69,10 +45,7 @@ def main() -> None:
     """
 
     # Empty nohup file
-    open("nohup.out", "w").close()
-
-    # Check device
-    print(f"device: {device}")
+    open("nohup.out", "w", encoding="utf-8").close()
 
     # Define progress bar
     progress_bar = tqdm(
@@ -88,14 +61,17 @@ def main() -> None:
     # Iter over dataset and model
     for dataset_name in DATASETS_NAME:
         for model_name in MODEL_NAMES:
-            # Define dataset
+            # Get dataset and device
             dataset: InMemoryDataset = load_data(
                 dataset_name, f"{DATA_PATH}/{dataset_name}"
             )
+            device: torch.device = get_device(dataset_name)
 
             # Load model
             model: torch.nn.Module
-            model = torch.load(f"{LOAD_PATH}/{dataset_name}_{model_name}.pt").to(device)
+            model = torch.load(
+                f"{LOAD_PATH}/{dataset_name}_{model_name}.pt", weights_only=False
+            ).to(device)
             model.eval()
 
             # Pass elements to correct device
@@ -112,72 +88,37 @@ def main() -> None:
                 # init results
                 global_results = []
 
-                # Init exec time
-                exec_time: float = 0.0
-                for _ in range(ITERATIONS):
-                    # start time
-                    start = time.time()
+                # Define folder path
+                checkpoints_folder_path: str = (
+                    f"{CHECKPOINTS_PATH}/{dataset_name}/{model_name}/{method_name}"
+                )
 
-                    # compute feature maps
-                    original_feature_maps: lil_matrix = original_xai(
-                        explainer, data, device=device
-                    )
-
-                    # compute execution time
-                    exec_time += time.time() - start
-
-                # Divide between iterations
-                exec_time /= ITERATIONS
-
-                # Create results for single cluster
-                results = [
-                    1,
-                    0,
-                    exec_time,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                ]
-                global_results.append(results)
+                # Create dir if it doesnt´t exist
+                if not os.path.isdir(checkpoints_folder_path):
+                    # Create dirs
+                    os.makedirs(checkpoints_folder_path)
 
                 # Iterate over cluster size and dropout rate
                 for num_clusters in NUM_CLUSTERS:
                     for dropout_rate in DROPOUT_RATES:
-                        # Init exec time
-                        exec_time = 0.0
+                        # Compute XAI
+                        (
+                            parallel_feature_maps,
+                            num_extended_nodes,
+                            num_extended_edges,
+                            exec_time,
+                        ) = compute_xai(
+                            explainer,
+                            num_clusters,
+                            dropout_rate,
+                            data,
+                            checkpoints_folder_path,
+                            device,
+                        )
 
-                        # Iter over executions
-                        for _ in range(ITERATIONS):
-                            # Start time
-                            start = time.time()
-
-                            # Compute xai
-                            parallel_feature_maps: lil_matrix
-                            (
-                                parallel_feature_maps,
-                                num_extended_nodes,
-                                num_extended_edges,
-                            ) = parallel_xai(
-                                explainer,
-                                data,
-                                num_clusters,
-                                3,
-                                dropout_rate,
-                                device=device,
-                            )
-
-                            # Compute execution time
-                            exec_time += time.time() - start
-
-                        # Divide between executions
-                        exec_time /= ITERATIONS
+                        # Get original feature maps
+                        if num_clusters == 1:
+                            original_feature_maps = parallel_feature_maps
 
                         # compute difference
                         original_feature_maps_dense = original_feature_maps.todense()

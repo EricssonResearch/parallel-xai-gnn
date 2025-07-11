@@ -4,14 +4,13 @@ This module contains the code for the explainability methods.
 
 # Standard libraries
 import copy
-from typing import Optional, List, Tuple, Callable
+from typing import Callable
 from abc import ABC, abstractmethod
 
 # 3pps
 import torch
-import torch_geometric
 import torch.nn.functional as F
-from torch.utils.hooks import RemovableHandle
+import torch_geometric
 
 
 class Explainer(ABC):
@@ -180,7 +179,7 @@ class DeConvNet(GradientExplainer):
         # Define backward hook
         def backward_hook_fn(
             module: torch.nn.Module, grad_in: torch.Tensor, grad_out: torch.Tensor
-        ) -> Tuple[torch.Tensor]:
+        ) -> tuple[torch.Tensor]:
             """
             Backward hook to modify gradient.
 
@@ -190,7 +189,7 @@ class DeConvNet(GradientExplainer):
                 grad_out: Gradient of the outputs.
 
             Returns:
-                Tuple of one element with the new gradient of the
+                tuple of one element with the new gradient of the
                     outputs.
             """
 
@@ -203,7 +202,7 @@ class DeConvNet(GradientExplainer):
         backward_hook: Callable = backward_hook_fn
 
         # Get modules
-        modules: List[Tuple[str, torch.nn.Module]] = list(self.model.named_children())
+        modules: list[tuple[str, torch.nn.Module]] = list(self.model.named_children())
 
         # Register hooks in relus
         module: torch.nn.Module
@@ -238,7 +237,7 @@ class GuidedBackprop(GradientExplainer):
         super().__init__(copy.deepcopy(model))
 
         # Init activations maps of model
-        self.activation_maps: List[torch.Tensor] = []
+        self.activation_maps: list[torch.Tensor] = []
 
         # Register hooks
         self.register_hooks()
@@ -277,7 +276,7 @@ class GuidedBackprop(GradientExplainer):
         # Define backward hook
         def backward_hook_fn(
             module: torch.nn.Module, grad_in: torch.Tensor, grad_out: torch.Tensor
-        ) -> Tuple[torch.Tensor]:
+        ) -> tuple[torch.Tensor]:
             """
             This function is the backward hook.
 
@@ -287,7 +286,7 @@ class GuidedBackprop(GradientExplainer):
                 grad_out: Gradients of the outputs.
 
             Returns:
-                Tuple of one element with the new gradient of the
+                tuple of one element with the new gradient of the
                     outputs.
             """
 
@@ -305,7 +304,7 @@ class GuidedBackprop(GradientExplainer):
         backward_hook: Callable = backward_hook_fn
 
         # get modules
-        modules: List[Tuple[str, torch.nn.Module]] = list(self.model.named_children())
+        modules: list[tuple[str, torch.nn.Module]] = list(self.model.named_children())
 
         # register hooks in relus
         module: torch.nn.Module
@@ -358,12 +357,14 @@ class SmoothGrad(GradientExplainer):
         self, model: torch.nn.Module, noise_level: float = 0.2, sample_size: int = 50
     ):
         """
-        Constructor of SmoothGradSaliencyMap class
+        This method is the constructor of the class.
 
         Args:
-            model for classifying images
-            noise level for the creation of smoothgrad visualizations. Default value: 0.2
-            sample size for creation of noise duplicates. Default value: 50
+            model: Model for classifying images.
+            noise_level: Noise level for the creation of smoothgrad
+                visualizations. Defaults to 0.2.
+            sample_size: Sample size for creation of noise duplicates.
+                Defaults to 50.
         """
 
         # set noise level and sample size
@@ -373,7 +374,7 @@ class SmoothGrad(GradientExplainer):
 
         return None
 
-    # overriding super class method
+    # Overriding
     @torch.no_grad()
     def explain(
         self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: torch.Tensor
@@ -392,6 +393,9 @@ class SmoothGrad(GradientExplainer):
                 [number of nodes].
         """
 
+        # Init gradients
+        gradients: torch.Tensor = torch.zeros_like(x)
+
         # Compute inputs with noise
         min_: torch.Tensor = torch.amin(x)
         max_: torch.Tensor = torch.amax(x)
@@ -401,11 +405,8 @@ class SmoothGrad(GradientExplainer):
             * torch.ones(self.sample_size, *x.size()).to(x.device)
         )
         noise: torch.Tensor = torch.normal(mean=0, std=std)
-        x: torch.Tensor = x.clone().unsqueeze(0)
-        x: torch.Tensor = x + noise
-
-        # Create gradients tensor
-        gradients: torch.Tensor = torch.zeros_like(x)
+        x = x.clone().unsqueeze(0)
+        x = x + noise
 
         # Compute gradients for each noise batch
         for i in range(x.size(0)):
@@ -413,13 +414,12 @@ class SmoothGrad(GradientExplainer):
             x_batch: torch.Tensor = x[i].clone()
 
             # Pass the noise batch through the model
-            gradients: torch.Tensor = self._compute_gradients(
-                x_batch, edge_index, node_ids
-            )
+            gradients += self._compute_gradients(x_batch, edge_index, node_ids)
 
         # Create feature maps
-        feature_maps: torch.Tensor = torch.mean(gradients, dim=0) / self.sample_size
-        feature_maps = torch.mean(torch.abs(feature_maps), dim=1)
+        feature_maps: torch.Tensor = torch.mean(
+            torch.abs(gradients / self.sample_size), dim=1
+        )
 
         return feature_maps
 
@@ -431,14 +431,14 @@ class GNNExplainer(Explainer):
     Args:
         explainer: Pytorch geometric explainer.
     """
-    
-    def __init__(self, model: torch.nn.Module):
+
+    def __init__(self, model: torch.nn.Module) -> None:
         """
         Constructor for Explainer class
 
         Args:
             model: Model to make predictions.
-            
+
         Returns:
             None.
         """
@@ -458,13 +458,13 @@ class GNNExplainer(Explainer):
                 return_type="raw",
             ),
         )
-        
+
         return None
 
     # Overriding method
     @torch.enable_grad()
     def explain(
-        self, x: torch.Tensor, edge_index: torch.Tensor, node_id: int
+        self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: torch.Tensor
     ) -> torch.Tensor:
         """
         This method computes the explainability of node matrix.
@@ -479,9 +479,9 @@ class GNNExplainer(Explainer):
             Feature explainability maps unnormalized. Dimensions:
                 [number of nodes].
         """
-        
+
         # Compute feature maps
-        explanation = self.explainer(x, edge_index, index=node_id)
+        explanation = self.explainer(x, edge_index, index=node_ids)
         feature_maps = explanation.node_mask[:, 0]
 
         return feature_maps

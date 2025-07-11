@@ -43,7 +43,7 @@ def main() -> None:
     epochs: int = 1000
 
     # empty nohup file
-    open("nohup.out", "w").close()
+    open("nohup.out", "w", encoding="utf-8").close()
 
     # check device
     print(f"device: {device}")

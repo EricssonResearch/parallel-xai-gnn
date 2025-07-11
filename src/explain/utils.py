@@ -1,4 +1,11 @@
-# ai libraries
+"""
+This module contains auxiliary functionality for the explain module.
+"""
+
+# Standard libraries
+from typing import Optional, Literal, Type
+
+# 3pps
 import torch
 import numpy as np
 from torch_geometric.utils.map import map_index
@@ -6,8 +13,28 @@ from torch_geometric.utils.mask import index_to_mask
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 from scipy.sparse import lil_matrix, coo_matrix
 
-# other libraries
-from typing import Optional, Literal
+# Own modules
+from src.explain.methods import (
+    Explainer,
+    SaliencyMap,
+    SmoothGrad,
+    DeConvNet,
+    GuidedBackprop,
+    GNNExplainer,
+)
+
+# Static variables
+METHODS: dict[str, Type[Explainer]] = {
+    "Saliency Map": SaliencyMap,
+    # "Smoothgrad": SmoothGrad,
+    # "Deconvnet": DeConvNet,
+    # "Guided-Backprop": GuidedBackprop,
+    # "GNNExplainer": GNNExplainer,
+}
+NUM_CLUSTERS: tuple[int, ...] = (1, 8, 16, 32, 64, 128)
+DROPOUT_RATES: tuple[float, ...] = (0.0, 0.2, 0.5, 0.7, 1.0)
+ITERATIONS: int = 3
+CHECKPOINTS_PATH: str = "checkpoints"
 
 
 def k_hop_subgraph(
@@ -16,7 +43,7 @@ def k_hop_subgraph(
     edge_index: torch.Tensor,
     flow: Literal["target_to_source", "source_to_target"] = "source_to_target",
     directed: bool = False,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     This function generates a subgraph with k hops. The twon main
     changes with respect to pytorch geometric are the following two:

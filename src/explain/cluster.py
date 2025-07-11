@@ -5,7 +5,6 @@ from torch_geometric.loader import ClusterData
 
 # own modules
 from src.explain.utils import k_hop_subgraph, subgraph
-from src.utils import HiddenPrints
 
 
 def get_extended_data(
@@ -32,46 +31,45 @@ def get_extended_data(
             batch_indexes, cluster_ids].
     """
 
-    # compute partitions
-    with HiddenPrints():
-        cluster_data: ClusterData = ClusterData(data, num_parts=num_clusters)
+    # Compute partitions
+    cluster_data: ClusterData = ClusterData(data, num_parts=num_clusters, log=False)
 
-    # load extended batches
+    # Load extended batches
     for cluster_id, _ in enumerate(cluster_data):
-        # extract data
+        # Extract data
         cluster = cluster_data[cluster_id]
 
-        # compute reconstructed tensors
+        # Compute reconstructed tensors
         re_ids, re_edge_index, re_edge_index_relabelled = k_hop_subgraph(
             cluster.node_ids, num_hops, data.edge_index
         )
 
-        # reduce reconstruction if dropout rate is higher than 1
+        # Reduce reconstruction if dropout rate is higher than 1
         if dropout_rate > 0.0:
-            # compute clone node ids
+            # Compute clone node ids
             cloned_node_ids_mask: torch.Tensor = ~torch.isin(re_ids, cluster.node_ids)
 
-            # define mask
+            # Define mask
             dropout_mask: torch.Tensor = torch.rand(
                 cloned_node_ids_mask.sum(), device=device
             )
             dropout_mask = dropout_mask < dropout_rate
 
-            # compute filter ids
+            # Compute filter ids
             filter_ids: torch.Tensor = re_ids[cloned_node_ids_mask][dropout_mask]
 
-            # filter out non reconstructed nodes
+            # Filter out non reconstructed nodes
             re_ids = re_ids[~torch.isin(re_ids, filter_ids)]
             re_edge_index, re_edge_index_relabelled = subgraph(re_ids, re_edge_index)
 
-        # compute batch index for each element
+        # Compute batch index for each element
         original_node_ids_mask: torch.Tensor = torch.isin(re_ids, cluster.node_ids)
         batch_indexes = -1 * torch.ones_like(re_ids)
         batch_indexes[original_node_ids_mask] = torch.arange(len(cluster.node_ids)).to(
             device
         )
 
-        # concat data objects
+        # Concat data objects
         if cluster_id == 0:
             data_extended: Data = Data(
                 node_ids=re_ids,

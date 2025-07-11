@@ -1,3 +1,12 @@
+"""
+This module contains code 
+"""
+
+# Standard libraries
+import os
+import random
+from typing import Literal
+
 # 3pps
 import torch
 import torch_geometric
@@ -5,26 +14,18 @@ import numpy as np
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.transforms import NormalizeFeatures
 
-# Standard libraries
-import os
-import sys
-import random
-from typing import Literal
-
 # Static variables
 DATA_PATH: str = "data"
 LOAD_PATH: str = "models"
 DATASETS_NAME: tuple[Literal["Cora", "CiteSeer", "PubMed"], ...] = (
     "Cora",
-    "CiteSeer",
-    "PubMed",
+    # "CiteSeer",
+    # "PubMed",
 )
 MODEL_NAMES: tuple[Literal["gcn", "gat"], ...] = (
     "gcn",
     "gat",
 )
-NUM_CLUSTERS: tuple[int, ...] = (1, 8, 16, 32, 64, 128)
-ITERATIONS: float = 3
 
 
 def load_data(
@@ -47,6 +48,28 @@ def load_data(
     )
 
     return dataset
+
+
+def get_device(dataset_name: Literal["Cora", "CiteSeer", "PubMed"]) -> torch.device:
+    """
+    This function returns the correct device to use for each dataset.
+
+    Args:
+        dataset_name: Name of the dataset.
+
+    Returns:
+        Pytorch device.
+    """
+
+    # Select device depending on the dataset
+    if dataset_name == "PubMed":
+        device = torch.device("cpu")
+    else:
+        device = (
+            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        )
+
+    return device
 
 
 def set_seed(seed: int) -> None:
@@ -75,21 +98,3 @@ def set_seed(seed: int) -> None:
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
     return None
-
-
-class HiddenPrints:
-    """
-    This class avoid printing in command line. It is intended to be
-    used as a context manager, using the with statement of python.
-
-    Atributtes:
-        _original_stdout
-    """
-
-    def __enter__(self):
-        self._original_stdout = sys.stdout
-        sys.stdout = open(os.devnull, "w")
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        sys.stdout.close()
-        sys.stdout = self._original_stdout

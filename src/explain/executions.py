@@ -1,5 +1,11 @@
+"""
+This module contains the code for XAI executions.
+"""
+
 # Standard libraries
-from typing import Optional
+import os
+import time
+import pickle
 
 # 3pps
 import torch
@@ -10,8 +16,98 @@ from scipy.sparse import lil_matrix
 from src.explain.methods import Explainer
 from src.explain.cluster import get_extended_data
 from src.explain.sparse import normalize_sparse_matrix
+from src.explain.utils import ITERATIONS
 
 
+@torch.no_grad()
+def compute_xai(
+    explainer: Explainer,
+    num_clusters: int,
+    dropout_rate: float,
+    data: Data,
+    checkpoints_folder_path: str,
+    device: torch.device,
+) -> tuple[lil_matrix, int, int, float]:
+    """
+    This function executes the explainability, and compute the execution
+    time.
+
+    Args:
+        explainer: _description_
+        num_clusters: _description_
+        dropout_rate: _description_
+        data: _description_
+        checkpoints_folder_path: _description_
+        device: _description_
+
+    Returns:
+        _description_
+    """
+
+    # Define file path
+    checkpoint_path: str = (
+        f"{checkpoints_folder_path}/{num_clusters}_{dropout_rate}.pkl"
+    )
+
+    # Check if checkpoint already exists
+    if not os.path.isfile(checkpoint_path):
+        # Init exec time
+        exec_time = 0.0
+
+        # Iter over executions
+        for _ in range(ITERATIONS):
+            # Start time
+            start = time.time()
+
+            # Compute xai
+            if num_clusters == 1:
+                global_feature_maps = original_xai(explainer, data, device=device)
+                num_extended_nodes = data.x.shape[0]
+                num_extended_edges = data.edge_index.shape[1]
+            else:
+                (
+                    global_feature_maps,
+                    num_extended_nodes,
+                    num_extended_edges,
+                ) = parallel_xai(
+                    explainer,
+                    data,
+                    num_clusters,
+                    3,
+                    device=device,
+                )
+
+            # Compute execution time
+            exec_time += time.time() - start
+
+        # Divide between executions
+        exec_time /= ITERATIONS
+
+        # Save with pickle
+        with open(checkpoint_path, "wb") as file_:
+            pickle.dump(
+                (
+                    global_feature_maps,
+                    num_extended_nodes,
+                    num_extended_edges,
+                    exec_time,
+                ),
+                file_,
+            )
+
+    else:
+        with open(checkpoint_path, "rb") as file_:
+            (
+                global_feature_maps,
+                num_extended_nodes,
+                num_extended_edges,
+                exec_time,
+            ) = pickle.load(file_)
+
+    return global_feature_maps, num_extended_nodes, num_extended_edges, exec_time
+
+
+@torch.no_grad()
 def original_xai(
     explainer: Explainer,
     data: Data,
@@ -19,7 +115,7 @@ def original_xai(
 ) -> lil_matrix:
     """
     This function computes the original xai, iterating over the nodes
-    and computing the explainability for each node (without bacthes).
+    and computing the explainability for each node (without batches).
 
     Args:
         explainer: Explainer to use.
@@ -61,7 +157,7 @@ def parallel_xai(
     num_hops: int = 3,
     dropout_rate: float = 0.0,
     device: torch.device = torch.device("cpu"),
-) -> tuple[lil_matrix, int, int, Optional[torch.Tensor]]:
+) -> tuple[lil_matrix, int, int]:
     """
     This function computes XAI in a parallel way.
 
@@ -78,7 +174,7 @@ def parallel_xai(
     Returns:
         Global features maps. Dimensions: [number of nodes,
             number of nodes].
-        NUmber of nodes in extended matrix.
+        Number of nodes in extended matrix.
         Number of edges in extended matrix.
     """
 

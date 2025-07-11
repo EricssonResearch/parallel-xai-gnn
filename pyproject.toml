@@ -56,12 +56,12 @@ pyg-lib = [
 
 [[tool.uv.index]]
 name = "torch"
-url = "https://download.pytorch.org/whl/cu121"
+url = "https://download.pytorch.org/whl/cu118"
 explicit = true
 
 [[tool.uv.index]]
 name = "pyg"
-url = "https://data.pyg.org/whl/torch-2.4.0+cu121.html"
+url = "https://data.pyg.org/whl/torch-2.4.0+cu118.html"
 format = "flat"
 explicit = true
 
