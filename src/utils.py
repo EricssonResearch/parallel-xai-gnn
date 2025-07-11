@@ -19,7 +19,7 @@ DATA_PATH: str = "data"
 LOAD_PATH: str = "models"
 DATASETS_NAME: tuple[Literal["Cora", "CiteSeer", "PubMed"], ...] = (
     "Cora",
-    # "CiteSeer",
+    "CiteSeer",
     # "PubMed",
 )
 MODEL_NAMES: tuple[Literal["gcn", "gat"], ...] = (

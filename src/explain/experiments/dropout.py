@@ -82,10 +82,10 @@ def main() -> None:
 
             # Iter over methods
             for method_name, method in METHODS.items():
-                # define explainer
+                # Define explainer
                 explainer: Explainer = method(model)
 
-                # init results
+                # Init results
                 global_results = []
 
                 # Define folder path
@@ -120,14 +120,14 @@ def main() -> None:
                         if num_clusters == 1:
                             original_feature_maps = parallel_feature_maps
 
-                        # compute difference
+                        # Compute difference
                         original_feature_maps_dense = original_feature_maps.todense()
                         parallel_feature_maps_dense = parallel_feature_maps.todense()
                         difference = np.abs(
                             parallel_feature_maps_dense - original_feature_maps_dense
                         )
 
-                        # compute affected neighbors and nodes
+                        # Compute affected neighbors and nodes
                         percentage_affected_neighbors: list[float] = []
                         percentage_affected_nodes: list[float] = []
                         thresholds: list[float] = [0.2, 0.5, 0.7]
@@ -143,7 +143,7 @@ def main() -> None:
                                 / x.shape[0]
                             )
 
-                        # append results
+                        # Append results
                         increment_nodes: int = num_extended_nodes - x.shape[0]
                         increment_nodes_percentage: float = (
                             100 * increment_nodes / x.shape[0]
@@ -169,7 +169,7 @@ def main() -> None:
                         ]
                         global_results.append(results)
 
-                        # update progress bar
+                        # Update progress bar
                         progress_bar.update()
 
                 # Build dataframe

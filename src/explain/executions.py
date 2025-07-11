@@ -33,15 +33,17 @@ def compute_xai(
     time.
 
     Args:
-        explainer: _description_
-        num_clusters: _description_
-        dropout_rate: _description_
-        data: _description_
-        checkpoints_folder_path: _description_
-        device: _description_
+        explainer: Explainer.
+        num_clusters: Number of clusters.
+        dropout_rate: Dropout rate.
+        data: Data object.
+        checkpoints_folder_path: Path to the folder where checkpoints
+            are saved.
+        device: Device to execute operations (CPU or GPU).
 
     Returns:
-        _description_
+        Global feature maps. Dimensions: [number of nodes,
+            number of nodes].
     """
 
     # Define file path
@@ -73,7 +75,7 @@ def compute_xai(
                     explainer,
                     data,
                     num_clusters,
-                    3,
+                    dropout_rate,
                     device=device,
                 )
 
@@ -154,8 +156,8 @@ def parallel_xai(
     explainer: Explainer,
     data: Data,
     num_clusters: int,
+    dropout_rate: float,
     num_hops: int = 3,
-    dropout_rate: float = 0.0,
     device: torch.device = torch.device("cpu"),
 ) -> tuple[lil_matrix, int, int]:
     """

@@ -26,10 +26,10 @@ from src.explain.methods import (
 # Static variables
 METHODS: dict[str, Type[Explainer]] = {
     "Saliency Map": SaliencyMap,
-    # "Smoothgrad": SmoothGrad,
-    # "Deconvnet": DeConvNet,
-    # "Guided-Backprop": GuidedBackprop,
-    # "GNNExplainer": GNNExplainer,
+    "Smoothgrad": SmoothGrad,
+    "Deconvnet": DeConvNet,
+    "Guided-Backprop": GuidedBackprop,
+    "GNNExplainer": GNNExplainer,
 }
 NUM_CLUSTERS: tuple[int, ...] = (1, 8, 16, 32, 64, 128)
 DROPOUT_RATES: tuple[float, ...] = (0.0, 0.2, 0.5, 0.7, 1.0)
