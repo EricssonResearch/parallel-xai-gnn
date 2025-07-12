@@ -1,5 +1,5 @@
 """
-This module contains code 
+This module contains auxiliary code for the src module.
 """
 
 # Standard libraries

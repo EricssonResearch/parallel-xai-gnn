@@ -1,5 +1,5 @@
 """
-This module contains the main function to execute explainability 
+This module contains the main function to execute explainability
 experiments.
 """
 
@@ -39,6 +39,9 @@ RESULTS_PATH: str = "results/dropout_reconstruction"
 def main() -> None:
     """
     This function is the main program for the explain module.
+
+    Raises:
+        RuntimeError: Original feature maps not computed at start.
 
     Returns:
         None.
@@ -119,6 +122,10 @@ def main() -> None:
                         # Get original feature maps
                         if num_clusters == 1:
                             original_feature_maps = parallel_feature_maps
+                        if "original_feature_maps" not in locals():
+                            raise RuntimeError(
+                                "Original feature maps not computed at start."
+                            )
 
                         # Compute difference
                         original_feature_maps_dense = original_feature_maps.todense()

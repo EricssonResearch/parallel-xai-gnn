@@ -398,22 +398,24 @@ class SmoothGrad(GradientExplainer):
         # Init gradients
         gradients: torch.Tensor = torch.zeros_like(x)
 
+        # Change x to cpu
+        device = x.device
+        x = x.cpu()
+
         # Compute inputs with noise
         min_: torch.Tensor = torch.amin(x)
         max_: torch.Tensor = torch.amax(x)
         std: torch.Tensor = (
-            (max_ - min_)
-            * self.noise_level
-            * torch.ones(self.sample_size, *x.size()).to(x.device)
+            (max_ - min_) * self.noise_level * torch.ones(self.sample_size, *x.size())
         )
         noise: torch.Tensor = torch.normal(mean=0, std=std)
-        x = x.clone().unsqueeze(0)
+        x = x.unsqueeze(0)
         x = x + noise
 
         # Compute gradients for each noise batch
         for i in range(x.size(0)):
             # Clone batch
-            x_batch: torch.Tensor = x[i].clone()
+            x_batch: torch.Tensor = x[i].to(device)
 
             # Pass the noise batch through the model
             gradients += self._compute_gradients(x_batch, edge_index, node_ids)
@@ -422,6 +424,9 @@ class SmoothGrad(GradientExplainer):
         feature_maps: torch.Tensor = torch.mean(
             torch.abs(gradients / self.sample_size), dim=1
         )
+
+        # Pass back x to original device
+        x = x.to(device)
 
         return feature_maps
 
