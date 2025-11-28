@@ -25,7 +25,7 @@ from src.explain.methods import Explainer
 from src.explain.executions import compute_xai
 
 # Static variables
-RESULTS_PATH: str = "results/full_reconstruction"
+RESULTS_PATH: str = "results/full"
 
 
 def main() -> None:
@@ -171,15 +171,15 @@ def main() -> None:
             global_results_array: np.ndarray = np.array(global_results)
 
             # Create results dir if it doesn't exist
-            if not os.path.isdir(f"{RESULTS_PATH}/visualizations"):
-                os.makedirs(f"{RESULTS_PATH}/visualizations")
+            if not os.path.isdir(f"{RESULTS_PATH}/charts"):
+                os.makedirs(f"{RESULTS_PATH}/charts")
 
             # Draw figures
             draw_figures(
                 global_results_array,
                 list(df.columns),
                 list(METHODS.keys()),
-                f"{RESULTS_PATH}/visualizations",
+                f"{RESULTS_PATH}/charts",
                 f"{dataset_name}_{model_name}",
             )
 

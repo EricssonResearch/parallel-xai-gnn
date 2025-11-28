@@ -11,8 +11,6 @@ from torch_geometric.data import InMemoryDataset, Data
 from torch_geometric.utils.map import map_index
 from torch_geometric.utils.mask import index_to_mask
 from torch_geometric.utils.num_nodes import maybe_num_nodes
-from scipy.sparse import lil_matrix, coo_matrix
-import numpy as np
 
 # Own modules
 from src.explain.methods import (
@@ -187,63 +185,6 @@ def subgraph(
     new_edge_index = new_edge_index.view(2, -1)
 
     return edge_index, new_edge_index
-
-
-def normalize_sparse_matrix(
-    sparse_matrix: lil_matrix, return_type: Literal["lil", "coo"] = "lil"
-) -> lil_matrix | coo_matrix:
-    """
-    This function normalized a sparse matrix. The normalization is
-    done by row.
-
-    Args:
-        sparse_matrix: sparse matrix in lil format. Dimensions:
-            [number of rows, number of columns].
-
-    Raises:
-        ValueError: Invalid return type value.
-
-    Returns:
-        sparse matrix normalized.
-    """
-
-    # transform to coo format
-    sparse_matrix_coo: coo_matrix = sparse_matrix.tocoo()
-
-    # sort coo matrix by row indexes
-    if np.any(sparse_matrix_coo.row[:-1] > sparse_matrix_coo.row[1:]):
-        row_indexes: np.ndarray = np.argsort(sparse_matrix_coo.row)
-        sparse_matrix_coo.row = sparse_matrix_coo.row[row_indexes]
-        sparse_matrix_coo.col = sparse_matrix_coo.col[row_indexes]
-        sparse_matrix_coo.data = sparse_matrix_coo.data[row_indexes]
-
-    # get min and max values
-    min_: np.ndarray = sparse_matrix_coo.min(axis=1).toarray()
-    max_: np.ndarray = sparse_matrix_coo.max(axis=1).toarray()
-    min_ = min_[max_ != 0]
-    max_ = max_[max_ != 0]
-
-    # compute counts
-    counts: np.ndarray = np.unique(sparse_matrix_coo.row, return_counts=True)[1]
-
-    # compute repeated
-    min_repeated = np.repeat(min_, counts)
-    max_repeated = np.repeat(max_, counts)
-
-    # normalize
-    sparse_matrix_coo.data = (sparse_matrix_coo.data - min_repeated) / (
-        max_repeated - min_repeated
-    )
-
-    # change return type
-    if return_type == "lil":
-        sparse_matrix = sparse_matrix_coo.tolil()
-    elif return_type == "coo":
-        pass
-    else:
-        raise ValueError("Invalid return type value")
-
-    return sparse_matrix_coo
 
 
 def load_artifacts(

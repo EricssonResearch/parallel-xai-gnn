@@ -49,7 +49,9 @@ def main() -> None:
 
     # Load model
     model: torch.nn.Module
-    model = torch.load(f"{LOAD_PATH}/{DATASET_NAME}_{MODEL_NAME}.pt").to(device)
+    model = torch.load(
+        f"{LOAD_PATH}/{DATASET_NAME}_{MODEL_NAME}.pt", weights_only=False
+    ).to(device)
     model.eval()
 
     # Pass elements to correct device

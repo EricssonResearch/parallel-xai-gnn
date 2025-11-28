@@ -30,7 +30,7 @@ from src.explain.methods import Explainer
 from src.explain.executions import compute_xai
 
 # static variables
-RESULTS_PATH: str = "results/dropout_reconstruction"
+RESULTS_PATH: str = "results/drop"
 
 
 @torch.no_grad()
