@@ -11,6 +11,7 @@ import pickle
 import torch
 from torch_geometric.data import Data
 from scipy.sparse import lil_matrix
+from tqdm.auto import tqdm
 
 # Own modules
 from src.explain.methods import Explainer
@@ -138,7 +139,7 @@ def original_xai(
     data = data.to(device)
 
     # iter over node ids
-    for node_id in data.node_ids.tolist():
+    for node_id in tqdm(data.node_ids.tolist()):
         # compute feature map
         feature_map: torch.Tensor = explainer.explain(data.x, data.edge_index, node_id)
 
@@ -192,6 +193,10 @@ def parallel_xai(
         data, num_clusters, num_hops, dropout_rate, device
     )
 
+    # pass data to the right device
+    data.edge_index = data.edge_index.int()
+    data_extended.edge_index = data_extended.edge_index.int()
+
     # compute number of batches and node ids of extended graph
     num_batches: int = data_extended.batch_indexes.max().item() + 1
     new_node_ids: torch.Tensor = torch.arange(data_extended.x.shape[0]).to(device)
@@ -209,7 +214,7 @@ def parallel_xai(
     )
 
     # Iter over batches
-    for batch_index in range(num_batches):
+    for batch_index in tqdm(range(num_batches)):
         # compute xai ids
         xai_ids: torch.Tensor = new_node_ids[data_extended.batch_indexes == batch_index]
 

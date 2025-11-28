@@ -10,26 +10,24 @@ import os
 import torch
 import numpy as np
 import pandas as pd
-from torch_geometric.data import InMemoryDataset, Data
+from torch_geometric.data import Data
 from tqdm.auto import tqdm
 
 # Own modules
 from src.utils import (
-    set_seed,
-    load_data,
-    get_device,
-    DATA_PATH,
-    LOAD_PATH,
+    set_torch_config,
     DATASETS_NAME,
     MODEL_NAMES,
 )
-from src.explain.utils import METHODS, NUM_CLUSTERS, CHECKPOINTS_PATH, DROPOUT_RATES
+from src.explain.utils import (
+    load_artifacts,
+    METHODS,
+    NUM_CLUSTERS,
+    CHECKPOINTS_PATH,
+    DROPOUT_RATES,
+)
 from src.explain.methods import Explainer
 from src.explain.executions import compute_xai
-
-# set seed and device
-set_seed(42)
-torch.set_num_threads(8)
 
 # static variables
 RESULTS_PATH: str = "results/dropout_reconstruction"
@@ -50,6 +48,10 @@ def main() -> None:
     # Empty nohup file
     open("nohup.out", "w", encoding="utf-8").close()
 
+    # Get device
+    device: torch.device = set_torch_config()
+    print(f"device: {device}")
+
     # Define progress bar
     progress_bar = tqdm(
         range(
@@ -65,23 +67,9 @@ def main() -> None:
     for dataset_name in DATASETS_NAME:
         for model_name in MODEL_NAMES:
             # Get dataset and device
-            dataset: InMemoryDataset = load_data(
-                dataset_name, f"{DATA_PATH}/{dataset_name}"
-            )
-            device: torch.device = get_device(dataset_name)
-
-            # Load model
+            data: Data
             model: torch.nn.Module
-            model = torch.load(
-                f"{LOAD_PATH}/{dataset_name}_{model_name}.pt", weights_only=False
-            ).to(device)
-            model.eval()
-
-            # Pass elements to correct device
-            x: torch.Tensor = dataset[0].x.float()
-            edge_index: torch.Tensor = dataset[0].edge_index.long()
-            node_ids: torch.Tensor = torch.arange(x.shape[0])
-            data: Data = Data(x=x, edge_index=edge_index, node_ids=node_ids)
+            data, model = load_artifacts(dataset_name, model_name, device)
 
             # Iter over methods
             for method_name, method in METHODS.items():
@@ -104,6 +92,22 @@ def main() -> None:
                 # Iterate over cluster size and dropout rate
                 for num_clusters in NUM_CLUSTERS:
                     for dropout_rate in DROPOUT_RATES:
+                        # Go to next iteration
+                        if (num_clusters == 1 and dropout_rate > 0) or (
+                            (
+                                dataset_name == "PubMed"
+                                and model_name == "gcn"
+                                and num_clusters > 32
+                            )
+                            or (
+                                dataset_name == "PubMed"
+                                and model_name == "gat"
+                                and num_clusters > 16
+                            )
+                        ):
+                            progress_bar.update()
+                            continue
+
                         # Compute XAI
                         (
                             parallel_feature_maps,
@@ -128,10 +132,8 @@ def main() -> None:
                             )
 
                         # Compute difference
-                        original_feature_maps_dense = original_feature_maps.todense()
-                        parallel_feature_maps_dense = parallel_feature_maps.todense()
                         difference = np.abs(
-                            parallel_feature_maps_dense - original_feature_maps_dense
+                            parallel_feature_maps - original_feature_maps
                         )
 
                         # Compute affected neighbors and nodes
@@ -141,23 +143,27 @@ def main() -> None:
                         for threshold in thresholds:
                             percentage_affected_neighbors.append(
                                 100
-                                * (difference > threshold).sum()
-                                / (original_feature_maps_dense != 0).sum()
+                                * (difference > threshold).sum().item()
+                                / (original_feature_maps != 0).sum().item()
                             )
                             percentage_affected_nodes.append(
                                 100
-                                * ((difference > threshold).sum(axis=1) != 0).sum()
-                                / x.shape[0]
+                                * ((difference > threshold).sum(axis=1) != 0)
+                                .sum()
+                                .item()
+                                / data.node_ids.shape[0]
                             )
 
                         # Append results
-                        increment_nodes: int = num_extended_nodes - x.shape[0]
+                        increment_nodes: int = num_extended_nodes - data.x.shape[0]
                         increment_nodes_percentage: float = (
-                            100 * increment_nodes / x.shape[0]
+                            100 * increment_nodes / data.x.shape[0]
                         )
-                        increment_edges: int = num_extended_edges - edge_index.shape[1]
+                        increment_edges: int = (
+                            num_extended_edges - data.edge_index.shape[1]
+                        )
                         increment_edges_percentage: float = (
-                            100 * increment_edges / edge_index.shape[1]
+                            100 * increment_edges / data.edge_index.shape[1]
                         )
                         results = [
                             num_clusters,

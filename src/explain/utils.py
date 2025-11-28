@@ -3,35 +3,40 @@ This module contains auxiliary functionality for the explain module.
 """
 
 # Standard libraries
-from typing import Optional, Literal, Type
+from typing import Optional, Literal, Type, TypeAlias
 
 # 3pps
 import torch
-import numpy as np
+from torch_geometric.data import InMemoryDataset, Data
 from torch_geometric.utils.map import map_index
 from torch_geometric.utils.mask import index_to_mask
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 from scipy.sparse import lil_matrix, coo_matrix
+import numpy as np
 
 # Own modules
 from src.explain.methods import (
     Explainer,
     SaliencyMap,
-    SmoothGrad,
     DeConvNet,
     GuidedBackprop,
     GNNExplainer,
 )
+from src.utils import load_data, DATA_PATH, LOAD_PATH
+
+# Define types
+MethodName: TypeAlias = Literal[
+    "Saliency Map", "Deconvnet", "Guided-Backprop", "GNNExplainer"
+]
 
 # Static variables
-METHODS: dict[str, Type[Explainer]] = {
+METHODS: dict[MethodName, Type[Explainer]] = {
     "Saliency Map": SaliencyMap,
-    "Smoothgrad": SmoothGrad,
     "Deconvnet": DeConvNet,
     "Guided-Backprop": GuidedBackprop,
     "GNNExplainer": GNNExplainer,
 }
-NUM_CLUSTERS: tuple[int, ...] = (1, 8, 16, 32, 64, 128)
+NUM_CLUSTERS: tuple[int, ...] = (1, 16, 32, 64, 128)
 DROPOUT_RATES: tuple[float, ...] = (0.0, 0.2, 0.5, 0.7, 1.0)
 ITERATIONS: int = 3
 CHECKPOINTS_PATH: str = "checkpoints"
@@ -45,7 +50,7 @@ def k_hop_subgraph(
     directed: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
-    This function generates a subgraph with k hops. The twon main
+    This function generates a subgraph with k hops. The two main
     changes with respect to pytorch geometric are the following two:
     - It returns the edge index, without relabelling and with
     relabelling.
@@ -239,3 +244,43 @@ def normalize_sparse_matrix(
         raise ValueError("Invalid return type value")
 
     return sparse_matrix_coo
+
+
+def load_artifacts(
+    dataset_name: Literal["Cora", "CiteSeer", "PubMed"],
+    model_name: Literal["gcn", "gat"],
+    device: torch.device,
+) -> tuple[Data, torch.nn.Module]:
+    """
+    This functions loads the data and the model.
+
+    Args:
+        dataset_name: Dataset name.
+        model_name: Model name.
+        device: Device to use in PyTorch.
+
+    Returns:
+        Data object. Attributes: [x, edge_index, node_ids].
+        Model to predict.
+    """
+
+    # Get dataset and device
+    dataset: InMemoryDataset = load_data(dataset_name, f"{DATA_PATH}/{dataset_name}")
+
+    # Check device
+    print(f"device: {device}")
+
+    # Pass elements to correct device and build data object
+    x: torch.Tensor = dataset[0].x.float()
+    edge_index: torch.Tensor = dataset[0].edge_index.long()
+    node_ids: torch.Tensor = torch.arange(x.shape[0])
+    data: Data = Data(x=x, edge_index=edge_index, node_ids=node_ids)
+
+    # Load model
+    model: torch.nn.Module
+    model = torch.load(
+        f"{LOAD_PATH}/{dataset_name}_{model_name}.pt", weights_only=False
+    ).to(device)
+    model.eval()
+
+    return data, model

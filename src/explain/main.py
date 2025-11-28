@@ -6,7 +6,7 @@ This module contains the code to choose which experiment to execute.
 from typing import Literal
 
 # Own module
-from src.explain.experiments import examples, dropout, full
+from src.explain.experiments import examples, full_tables, drop_tables
 
 
 def main() -> None:
@@ -19,15 +19,15 @@ def main() -> None:
     """
 
     # Define experiment to execute
-    experiment_name: Literal["examples", "dropout", "full"] = "dropout"
+    experiment_name: Literal["examples", "full_tables", "drop_tables"] = "full_tables"
 
     match experiment_name:
         case "examples":
             examples.main()
-        case "dropout":
-            dropout.main()
-        case "full":
-            full.main()
+        case "full_tables":
+            full_tables.main()
+        case "drop_tables":
+            drop_tables.main()
 
     return None
 

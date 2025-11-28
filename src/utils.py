@@ -5,7 +5,7 @@ This module contains auxiliary code for the src module.
 # Standard libraries
 import os
 import random
-from typing import Literal
+from typing import Literal, TypeAlias
 
 # 3pps
 import torch
@@ -14,18 +14,38 @@ import numpy as np
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.transforms import NormalizeFeatures
 
+# Define types
+DatasetName: TypeAlias = Literal["Cora", "CiteSeer", "PubMed"]
+ModelName: TypeAlias = Literal["gcn", "gat"]
+
 # Static variables
 DATA_PATH: str = "data"
 LOAD_PATH: str = "models"
-DATASETS_NAME: tuple[Literal["Cora", "CiteSeer", "PubMed"], ...] = (
+DATASETS_NAME: tuple[DatasetName, ...] = (
     "Cora",
     "CiteSeer",
-    # "PubMed",
+    "PubMed",
 )
-MODEL_NAMES: tuple[Literal["gcn", "gat"], ...] = (
+MODEL_NAMES: tuple[ModelName, ...] = (
     "gcn",
     "gat",
 )
+
+
+def get_device() -> torch.device:
+    """
+    This function gets the device for PyTorch.
+
+    Returns:
+        PyTorch device.
+    """
+
+    # Get device
+    device: torch.device = (
+        torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    )
+
+    return device
 
 
 def load_data(
@@ -50,7 +70,7 @@ def load_data(
     return dataset
 
 
-def get_device(dataset_name: Literal["Cora", "CiteSeer", "PubMed"]) -> torch.device:
+def set_torch_config() -> torch.device:
     """
     This function returns the correct device to use for each dataset.
 
@@ -61,13 +81,14 @@ def get_device(dataset_name: Literal["Cora", "CiteSeer", "PubMed"]) -> torch.dev
         Pytorch device.
     """
 
+    # Set seed and number of threads
+    set_seed(42)
+    torch.set_num_threads(8)
+
     # Select device depending on the dataset
-    if dataset_name == "PubMed":
-        device = torch.device("cpu")
-    else:
-        device = (
-            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        )
+    device: torch.device = (
+        torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    )
 
     return device
 

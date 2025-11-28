@@ -59,7 +59,7 @@ class Explainer(ABC):
                 number of node features].
         """
 
-        pass
+        raise NotImplementedError("Must implement this method in subclasses")
 
 
 class GradientExplainer(Explainer):
@@ -398,24 +398,16 @@ class SmoothGrad(GradientExplainer):
         # Init gradients
         gradients: torch.Tensor = torch.zeros_like(x)
 
-        # Change x to cpu
-        device = x.device
-        x = x.cpu()
-
-        # Compute inputs with noise
-        min_: torch.Tensor = torch.amin(x)
-        max_: torch.Tensor = torch.amax(x)
-        std: torch.Tensor = (
-            (max_ - min_) * self.noise_level * torch.ones(self.sample_size, *x.size())
-        )
-        noise: torch.Tensor = torch.normal(mean=0, std=std)
-        x = x.unsqueeze(0)
-        x = x + noise
+        # Compute x
+        min_ = torch.amin(x)
+        max_ = torch.amax(x)
+        std = (max_ - min_) * self.noise_level * torch.ones_like(x)
+        noise = torch.normal(mean=0, std=std)
 
         # Compute gradients for each noise batch
-        for i in range(x.size(0)):
+        for _ in range(x.shape[0]):
             # Clone batch
-            x_batch: torch.Tensor = x[i].to(device)
+            x_batch: torch.Tensor = x + noise[torch.randperm(x.shape[0]), :]
 
             # Pass the noise batch through the model
             gradients += self._compute_gradients(x_batch, edge_index, node_ids)
@@ -424,9 +416,6 @@ class SmoothGrad(GradientExplainer):
         feature_maps: torch.Tensor = torch.mean(
             torch.abs(gradients / self.sample_size), dim=1
         )
-
-        # Pass back x to original device
-        x = x.to(device)
 
         return feature_maps
 

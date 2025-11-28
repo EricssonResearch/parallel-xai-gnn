@@ -7,7 +7,7 @@ import os
 
 # 3pps
 import torch
-from torch_geometric.data import InMemoryDataset, Data
+from torch_geometric.data import Data
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -16,21 +16,13 @@ from tqdm.auto import tqdm
 
 # Own modules
 from src.utils import (
-    set_seed,
-    load_data,
-    get_device,
-    DATA_PATH,
-    LOAD_PATH,
+    set_torch_config,
     DATASETS_NAME,
     MODEL_NAMES,
 )
-from src.explain.utils import METHODS, NUM_CLUSTERS, CHECKPOINTS_PATH
+from src.explain.utils import load_artifacts, METHODS, NUM_CLUSTERS, CHECKPOINTS_PATH
 from src.explain.methods import Explainer
 from src.explain.executions import compute_xai
-
-# Set seed and device
-set_seed(42)
-torch.set_num_threads(8)
 
 # Static variables
 RESULTS_PATH: str = "results/full_reconstruction"
@@ -47,6 +39,10 @@ def main() -> None:
     # Empty nohup file
     open("nohup.out", "w", encoding="utf-8").close()
 
+    # Get device
+    device: torch.device = set_torch_config()
+    print(f"device: {device}")
+
     # Define progress bar
     progress_bar = tqdm(
         range(len(DATASETS_NAME) * len(MODEL_NAMES) * len(METHODS) * len(NUM_CLUSTERS))
@@ -56,26 +52,9 @@ def main() -> None:
     for dataset_name in DATASETS_NAME:
         for model_name in MODEL_NAMES:
             # Get dataset and device
-            dataset: InMemoryDataset = load_data(
-                dataset_name, f"{DATA_PATH}/{dataset_name}"
-            )
-            device: torch.device = get_device(dataset_name)
-
-            # Print used device
-            print(f"Using: {device}")
-
-            # Load model
+            data: Data
             model: torch.nn.Module
-            model = torch.load(
-                f"{LOAD_PATH}/{dataset_name}_{model_name}.pt", weights_only=False
-            ).to(device)
-            model.eval()
-
-            # Pass elements to correct device
-            x: torch.Tensor = dataset[0].x.float()
-            edge_index: torch.Tensor = dataset[0].edge_index.long()
-            node_ids: torch.Tensor = torch.arange(x.shape[0])
-            data: Data = Data(x=x, edge_index=edge_index, node_ids=node_ids)
+            data, model = load_artifacts(dataset_name, model_name, device)
 
             # Init global results
             global_results = []
@@ -100,6 +79,19 @@ def main() -> None:
 
                 # Iterate over cluster size
                 for num_clusters in NUM_CLUSTERS:
+                    # Go to next iteration
+                    if (
+                        dataset_name == "PubMed"
+                        and model_name == "gcn"
+                        and num_clusters > 32
+                    ) or (
+                        dataset_name == "PubMed"
+                        and model_name == "gat"
+                        and num_clusters > 16
+                    ):
+                        progress_bar.update()
+                        continue
+
                     # Compute XAI
                     _, num_extended_nodes, num_extended_edges, exec_time = compute_xai(
                         explainer,
@@ -111,13 +103,13 @@ def main() -> None:
                     )
 
                     # Append results
-                    increment_nodes: int = num_extended_nodes - x.shape[0]
+                    increment_nodes: int = num_extended_nodes - data.x.shape[0]
                     increment_nodes_percentage: float = (
-                        100 * increment_nodes / x.shape[0]
+                        100 * increment_nodes / data.x.shape[0]
                     )
-                    increment_edges: int = num_extended_edges - edge_index.shape[1]
+                    increment_edges: int = num_extended_edges - data.edge_index.shape[1]
                     increment_edges_percentage: float = (
-                        100 * increment_edges / edge_index.shape[1]
+                        100 * increment_edges / data.edge_index.shape[1]
                     )
                     results.append(
                         [

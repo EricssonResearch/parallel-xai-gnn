@@ -6,7 +6,7 @@ authors = [
     {name = "Oscar Llorente", email = "oscar.llorente.gonzalez@ericsson.com"},
 ]
 readme = "README.md"
-requires-python = "==3.11.*"
+requires-python = "==3.12.*"
 dependencies = [
     "black==23.1.0",
     "complexipy==1.2.0",
@@ -24,7 +24,7 @@ dependencies = [
     "scikit-learn==1.5.1",
     "scipy==1.14.1",
     "tensorboard==2.17.1",
-    "torch==2.4.0",
+    "torch==2.6.0",
     "torchmetrics==1.6.1",
     "torch-cluster==1.6.3",
     "torch-geometric==2.6.1",
@@ -56,12 +56,12 @@ pyg-lib = [
 
 [[tool.uv.index]]
 name = "torch"
-url = "https://download.pytorch.org/whl/cu118"
+url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [[tool.uv.index]]
 name = "pyg"
-url = "https://data.pyg.org/whl/torch-2.4.0+cu118.html"
+url = "https://data.pyg.org/whl/torch-2.6.0+cu124.html"
 format = "flat"
 explicit = true
 
