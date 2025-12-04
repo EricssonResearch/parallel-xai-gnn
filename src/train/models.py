@@ -1,18 +1,21 @@
-# deep learning libraries
+"""
+This module contains the models.
+"""
+
+# 3pps
 import torch
 import torch_geometric
-import torch.nn.functional
 
 
 class GCN(torch.nn.Module):
     """
-    This class defines a model with two GCN layers
+    This class defines a model with two GCN layers.
 
     Attributes:
-        conv1: first GNN
-        relu: non linearity function
-        dropout: dropout layer
-        conv2: second GNN
+        conv1: first GNN.
+        relu: non linearity function.
+        dropout: dropout layer.
+        conv2: second GNN.
     """
 
     def __init__(
@@ -23,12 +26,15 @@ class GCN(torch.nn.Module):
         prob_drop: float = 0.5,
     ) -> None:
         """
-        This method is the constructor for the GCN class
+        This method is the constructor for the GCN class.
 
         Args:
-            input_size: number of node features
-            hidden_channels: size between the layers
-            output_size: number of possible classes
+            input_size: Number of node features.
+            hidden_channels: Size between the layers.
+            output_size: Number of possible classes.
+
+        Returns:
+            None.
         """
 
         # call superclass constructor
@@ -44,16 +50,20 @@ class GCN(torch.nn.Module):
             hidden_channels, output_size
         )
 
+        return None
+
     def forward(self, inputs: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """
-        This method defines the forward pass
+        This method defines the forward pass.
 
         Args:
-            inputs: node matrix. Dimensions: [batch size, input size]
-            edge_index: edge index tensor that represents the adj matrix. Dimensions: [2, number of edges]
+            inputs: Node matrix. Dimensions: [batch size, input size].
+            edge_index: Edge index tensor that represents the adj
+                matrix. Dimensions: [2, number of edges].
 
         Returns:
-            predictions of the classes. Dimensions: [batch size, output size]
+            Predictions of the classes. Dimensions: [batch size,
+                output size].
         """
 
         # compute outputs
@@ -67,7 +77,7 @@ class GCN(torch.nn.Module):
 
 class GAT(torch.nn.Module):
     """
-    This class defines a model with two GAT layers
+    This class defines a model with two GAT layers.
 
     Attributes:
         conv1: first GNN
@@ -84,12 +94,15 @@ class GAT(torch.nn.Module):
         prob_drop: float = 0.5,
     ) -> None:
         """
-        This method is the constructor for the GCN class
+        This method is the constructor for the GCN class.
 
         Args:
-            input_size: number of node features
-            hidden_channels: size between the layers
-            output_size: number of possible classes
+            input_size: number of node features.
+            hidden_channels: size between the layers.
+            output_size: number of possible classes.
+
+        Returns:
+            None.
         """
 
         # call superclass constructor
@@ -107,14 +120,16 @@ class GAT(torch.nn.Module):
 
     def forward(self, inputs: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """
-        This method defines the forward pass
+        This method defines the forward pass.
 
         Args:
-            inputs: node matrix. Dimensions: [batch size, input size]
-            edge_index: edge index tensor that represents the adj matrix. Dimensions: [2, number of edges]
+            inputs: Node matrix. Dimensions: [batch size, input size].
+            edge_index: Edge index tensor that represents the adj
+                matrix. Dimensions: [2, number of edges].
 
         Returns:
-            predictions of the classes. Dimensions: [batch size, output size]
+            Predictions of the classes. Dimensions: [batch size,
+                output size].
         """
 
         # compute outputs

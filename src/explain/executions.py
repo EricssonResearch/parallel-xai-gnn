@@ -1,135 +1,201 @@
-# deep learning libraries
-import torch
-import torch_geometric
-import pandas as pd
-import torch.nn.functional as F
-from torch_geometric.data import InMemoryDataset, Data
-from torch_geometric.loader import ClusterData
-from scipy.sparse import lil_matrix
+"""
+This module contains the code for XAI executions.
+"""
 
-# other libraries
+# Standard libraries
 import os
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
+import time
+import pickle
+
+# 3pps
+import torch
+from torch_geometric.data import Data
+from scipy.sparse import lil_matrix
 from tqdm.auto import tqdm
-from typing import Literal, Type
 
-# own modules
-from src.train.models import GCN, GAT
-from src.utils import set_seed, load_data
+# Own modules
 from src.explain.methods import Explainer
-from src.explain.utils import k_hop_subgraph
+from src.explain.cluster import get_extended_data
+from src.explain.sparse import normalize_sparse_matrix
+from src.explain.utils import ITERATIONS
 
 
+@torch.no_grad()
+def compute_xai(
+    explainer: Explainer,
+    num_clusters: int,
+    dropout_rate: float,
+    data: Data,
+    checkpoints_folder_path: str,
+    device: torch.device,
+) -> tuple[lil_matrix, int, int, float]:
+    """
+    This function executes the explainability, and compute the execution
+    time.
+
+    Args:
+        explainer: Explainer.
+        num_clusters: Number of clusters.
+        dropout_rate: Dropout rate.
+        data: Data object.
+        checkpoints_folder_path: Path to the folder where checkpoints
+            are saved.
+        device: Device to execute operations (CPU or GPU).
+
+    Returns:
+        Global feature maps. Dimensions: [number of nodes,
+            number of nodes].
+    """
+
+    # Define file path
+    checkpoint_path: str = (
+        f"{checkpoints_folder_path}/{num_clusters}_{dropout_rate}.pkl"
+    )
+
+    # Check if checkpoint already exists
+    if not os.path.isfile(checkpoint_path):
+        # Init exec time
+        exec_time = 0.0
+
+        # Iter over executions
+        for _ in range(ITERATIONS):
+            # Start time
+            start = time.time()
+
+            # Compute xai
+            if num_clusters == 1:
+                global_feature_maps = original_xai(explainer, data, device=device)
+                num_extended_nodes = data.x.shape[0]
+                num_extended_edges = data.edge_index.shape[1]
+            else:
+                (
+                    global_feature_maps,
+                    num_extended_nodes,
+                    num_extended_edges,
+                ) = parallel_xai(
+                    explainer,
+                    data,
+                    num_clusters,
+                    dropout_rate,
+                    device=device,
+                )
+
+            # Compute execution time
+            exec_time += time.time() - start
+
+        # Divide between executions
+        exec_time /= ITERATIONS
+
+        # Save with pickle
+        with open(checkpoint_path, "wb") as file_:
+            pickle.dump(
+                (
+                    global_feature_maps,
+                    num_extended_nodes,
+                    num_extended_edges,
+                    exec_time,
+                ),
+                file_,
+            )
+
+    else:
+        with open(checkpoint_path, "rb") as file_:
+            (
+                global_feature_maps,
+                num_extended_nodes,
+                num_extended_edges,
+                exec_time,
+            ) = pickle.load(file_)
+
+    return global_feature_maps, num_extended_nodes, num_extended_edges, exec_time
+
+
+@torch.no_grad()
 def original_xai(
     explainer: Explainer,
-    x: torch.Tensor,
-    edge_index: torch.Tensor,
-    node_ids: torch.Tensor,
-    test_mask: torch.Tensor,
+    data: Data,
     device: torch.device = torch.device("cpu"),
 ) -> lil_matrix:
+    """
+    This function computes the original xai, iterating over the nodes
+    and computing the explainability for each node (without batches).
+
+    Args:
+        explainer: Explainer to use.
+        data: data object. Attributes: [node_ids, x, edge_index].
+        device: device for torch tensors. Defaults to
+            torch.device("cpu").
+
+    Returns:
+        Global feature maps. Dimension: [number of nodes,
+            number of nodes].
+    """
+
     # create feature maps
-    num_nodes: int = x.shape[0]
+    num_nodes: int = data.x.shape[0]
     global_feature_maps: lil_matrix = lil_matrix((num_nodes, num_nodes))
 
-    # construct Data object
-    data = Data(
-        node_ids=node_ids,
-        x=x,
-        edge_index=edge_index,
-        test_mask=test_mask,
-    ).to(device)
+    # pass to right device
+    data = data.to(device)
 
-    for node_id in node_ids:
+    # iter over node ids
+    for node_id in tqdm(data.node_ids.tolist()):
         # compute feature map
         feature_map: torch.Tensor = explainer.explain(data.x, data.edge_index, node_id)
 
         # add to global feature map
         global_feature_maps[node_id] = feature_map.cpu().numpy()
 
+    # normalize
+    global_feature_maps = normalize_sparse_matrix(global_feature_maps)
+
     return global_feature_maps
 
 
+@torch.no_grad()
 def parallel_xai(
     explainer: Explainer,
-    x: torch.Tensor,
-    edge_index: torch.Tensor,
-    node_ids: torch.Tensor,
-    test_mask: torch.Tensor,
-    num_parts: int,
+    data: Data,
+    num_clusters: int,
+    dropout_rate: float,
     num_hops: int = 3,
     device: torch.device = torch.device("cpu"),
-) -> lil_matrix:
+) -> tuple[lil_matrix, int, int]:
     """
     This function computes XAI in a parallel way.
 
     Args:
         explainer: explainer to use.
-        x: _description_
-        edge_index: _description_
-        node_ids: _description_
-        test_mask: _description_
-        num_parts: _description_
-        num_hops:
-        device: _description_
+        data: data object. Attributes: [node_ids, x, edge_index].
+        test_mask: test mask tensor. Dimensions: [number of nodes].
+        num_clusters: number of clusters.
+        num_hops: number of hops of GNN model. Defaults to 3.
+        dropout_rate: rate for the dropout in the reconstruction.
+            Defaults to 0.0.
+        device: device for the tensors. Defaults to cpu.
 
     Returns:
-        _description_
+        Global features maps. Dimensions: [number of nodes,
+            number of nodes].
+        Number of nodes in extended matrix.
+        Number of edges in extended matrix.
     """
 
     # create feature maps
-    num_nodes: int = x.shape[0]
+    num_nodes: int = data.x.shape[0]
     global_feature_maps: lil_matrix = lil_matrix((num_nodes, num_nodes))
 
-    # construct Data object
-    data = Data(
-        node_ids=node_ids,
-        x=x,
-        edge_index=edge_index,
-        test_mask=test_mask,
-    ).to(device)
+    # pass data to the right device
+    data = data.to(device)
 
-    # compute partitions
-    cluster_data: ClusterData = ClusterData(
-        data, num_parts=num_parts, keep_inter_cluster_edges=False
+    # compute extended data
+    data_extended: Data = get_extended_data(
+        data, num_clusters, num_hops, dropout_rate, device
     )
 
-    # load extended batches
-    for cluster_id in range(len(cluster_data)):
-        # extract data
-        cluster = cluster_data[cluster_id]
-
-        # compute reconstructed tensors
-        re_ids, re_edge_index, re_edge_index_relabelled = k_hop_subgraph(
-            cluster.node_ids, num_hops, data.edge_index
-        )
-
-        # compute batch index for each element
-        cloned_node_ids: torch.Tensor = ~torch.isin(re_ids, cluster.node_ids)
-        batch_indexes = -1 * torch.ones_like(re_ids)
-        batch_indexes[~cloned_node_ids] = torch.arange(len(cluster.node_ids)).to(device)
-
-        # concat data objects
-        if cluster_id == 0:
-            data_extended: Data = Data(
-                node_ids=re_ids,
-                x=data.x[re_ids, :],
-                edge_index=re_edge_index_relabelled,
-                batch_indexes=batch_indexes,
-                cluster_ids=cluster_id * torch.ones_like(batch_indexes),
-            )
-
-        else:
-            data_extended = data_extended.concat(
-                Data(
-                    node_ids=re_ids,
-                    x=data.x[re_ids, :],
-                    edge_index=re_edge_index_relabelled + data_extended.x.shape[0],
-                    batch_indexes=batch_indexes,
-                    cluster_ids=cluster_id * torch.ones_like(batch_indexes),
-                )
-            )
+    # pass data to the right device
+    data.edge_index = data.edge_index.int()
+    data_extended.edge_index = data_extended.edge_index.int()
 
     # compute number of batches and node ids of extended graph
     num_batches: int = data_extended.batch_indexes.max().item() + 1
@@ -147,8 +213,8 @@ def parallel_xai(
         sorted=False,
     )
 
-    # iter over bacthes
-    for batch_index in range(num_batches):
+    # Iter over batches
+    for batch_index in tqdm(range(num_batches)):
         # compute xai ids
         xai_ids: torch.Tensor = new_node_ids[data_extended.batch_indexes == batch_index]
 
@@ -180,4 +246,11 @@ def parallel_xai(
             feature_map[feature_map != 0].cpu().numpy()
         )
 
-    return global_feature_maps
+    # Normalize
+    global_feature_maps = normalize_sparse_matrix(global_feature_maps)
+
+    return (
+        global_feature_maps,
+        data_extended.x.shape[0],
+        data_extended.edge_index.shape[1],
+    )

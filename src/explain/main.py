@@ -1,98 +1,35 @@
-# deep learning libraries
-import torch
-import numpy as np
-import pandas as pd
-import torch.nn.functional as F
-from torch_geometric.data import InMemoryDataset
-from scipy.sparse import lil_matrix
+"""
+This module contains the code to choose which experiment to execute.
+"""
 
-# other libraries
-import os
-import time
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
-from tqdm.auto import tqdm
-from typing import Literal, Type
+# Standard libraries
+from typing import Literal
 
-# own modules
-from src.train.models import GCN, GAT
-from src.utils import set_seed, load_data
-from src.explain.methods import (
-    Explainer,
-    SaliencyMap,
-    SmoothGrad,
-    DeConvNet,
-    GuidedBackprop,
-    GNNExplainer,
-)
-from src.explain.executions import original_xai, parallel_xai
-
-
-# set seed and device
-set_seed(42)
-torch.set_num_threads(8)
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
-# static variables
-DATA_PATH: str = "data"
-LOAD_PATH: str = "models"
-METHODS: dict[str, Type[Explainer]] = {
-    "Saliency Map": SaliencyMap,
-    "Smoothgrad": SmoothGrad,
-    "Deconvnet": DeConvNet,
-    "Guided-Backprop": GuidedBackprop,
-    "GNNExplainer": GNNExplainer,
-}
-DATASETS_NAME: tuple[Literal["Cora", "CiteSeer", "PubMed"], ...] = ("Cora",)
-MODEL_NAMES: tuple[Literal["gcn", "gat"], ...] = ("gcn",)
+# Own module
+from src.explain.experiments import examples, full_tables, drop_tables
 
 
 def main() -> None:
-    # empty nohup file
-    open("nohup.out", "w").close()
+    """
+    This is the main function that executes teh experiment that you
+    define with the experiment_name variable.
 
-    # check device
-    print(f"device: {device}")
+    Returns:
+        None.
+    """
 
-    # define progress bar
-    progress_bar = tqdm(range(len(DATASETS_NAME) * len(MODEL_NAMES) * len(METHODS) * 2))
+    # Define experiment to execute
+    experiment_name: Literal["examples", "full_tables", "drop_tables"] = "examples"
 
-    for dataset_name in DATASETS_NAME:
-        for model_name in MODEL_NAMES:
-            # define dataset
-            dataset: InMemoryDataset = load_data(
-                dataset_name, f"{DATA_PATH}/{dataset_name}"
-            )
+    match experiment_name:
+        case "examples":
+            examples.main()
+        case "full_tables":
+            full_tables.main()
+        case "drop_tables":
+            drop_tables.main()
 
-            # load model
-            model: torch.nn.Module
-            model = torch.load(f"{LOAD_PATH}/{dataset_name}_{model_name}.pt").to(device)
-            model.eval()
-
-            # pass elements to correct device
-            x: torch.Tensor = dataset[0].x.float()
-            edge_index: torch.Tensor = dataset[0].edge_index.long()
-            test_mask: torch.Tensor = dataset[0].test_mask
-            node_ids: torch.Tensor = torch.arange(x.shape[0])
-
-            explainer: Explainer = SaliencyMap(model)
-
-            # compute feature maps
-            start = time.time()
-            original_feature_maps: lil_matrix = original_xai(
-                explainer, x, edge_index, node_ids, test_mask, device=device
-            )
-            print(time.time() - start)
-            start = time.time()
-            parallel_feature_maps: lil_matrix = parallel_xai(
-                explainer, x, edge_index, node_ids, test_mask, 64, device=device
-            )
-            print(time.time() - start)
-
-            equal: bool = np.allclose(
-                original_feature_maps[original_feature_maps != 0].todense(),
-                parallel_feature_maps[parallel_feature_maps != 0].todense(),
-            )
+    return None
 
 
 if __name__ == "__main__":

@@ -1,14 +1,51 @@
-# deep learning libraries
+"""
+This module contains auxiliary code for the src module.
+"""
+
+# Standard libraries
+import os
+import random
+from typing import Literal, TypeAlias
+
+# 3pps
 import torch
 import torch_geometric
 import numpy as np
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.transforms import NormalizeFeatures
 
-# other libraries
-import os
-import random
-from typing import Literal
+# Define types
+DatasetName: TypeAlias = Literal["Cora", "CiteSeer", "PubMed"]
+ModelName: TypeAlias = Literal["gcn", "gat"]
+
+# Static variables
+DATA_PATH: str = "data"
+LOAD_PATH: str = "models"
+DATASETS_NAME: tuple[DatasetName, ...] = (
+    "Cora",
+    "CiteSeer",
+    "PubMed",
+)
+MODEL_NAMES: tuple[ModelName, ...] = (
+    "gcn",
+    "gat",
+)
+
+
+def get_device() -> torch.device:
+    """
+    This function gets the device for PyTorch.
+
+    Returns:
+        PyTorch device.
+    """
+
+    # Get device
+    device: torch.device = (
+        torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    )
+
+    return device
 
 
 def load_data(
@@ -31,6 +68,29 @@ def load_data(
     )
 
     return dataset
+
+
+def set_torch_config() -> torch.device:
+    """
+    This function returns the correct device to use for each dataset.
+
+    Args:
+        dataset_name: Name of the dataset.
+
+    Returns:
+        Pytorch device.
+    """
+
+    # Set seed and number of threads
+    set_seed(42)
+    torch.set_num_threads(8)
+
+    # Select device depending on the dataset
+    device: torch.device = (
+        torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    )
+
+    return device
 
 
 def set_seed(seed: int) -> None:

@@ -4,6 +4,7 @@ data/
 models/
 runs/
 visualizations/
+checkpoints/
 __pycache__/
 /results/
 
