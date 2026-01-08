@@ -158,7 +158,7 @@ def parallel_xai(
     data: Data,
     num_clusters: int,
     dropout_rate: float,
-    num_hops: int = 3,
+    num_hops: int = 2,
     device: torch.device = torch.device("cpu"),
 ) -> tuple[lil_matrix, int, int]:
     """
@@ -194,8 +194,8 @@ def parallel_xai(
     )
 
     # pass data to the right device
-    data.edge_index = data.edge_index.int()
-    data_extended.edge_index = data_extended.edge_index.int()
+    data.edge_index = data.edge_index.long()
+    data_extended.edge_index = data_extended.edge_index.long()
 
     # compute number of batches and node ids of extended graph
     num_batches: int = data_extended.batch_indexes.max().item() + 1
