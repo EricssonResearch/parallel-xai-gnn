@@ -1,6 +1,6 @@
 # Parallel XAI GNN Neighbors
 
-This is the official implementation of [ParaParallelizing Node-Level Explainability in Graph Neural Networks](https://arxiv.org/abs/2403.16108).
+This is the official implementation of [ParaParallelizing Node-Level Explainability in Graph Neural Networks](https://arxiv.org/abs/2601.04807).
 
 In this README you will find as much information as possible so you be able to replicate this research. If you have doubts or queries about it, please email us, and we will try to help as much as possible. 
 
@@ -90,15 +90,15 @@ Specific rules for the checks are included in our pyproject.toml file.
 
 ## Cite
 
-Please cite our [paper](https://arxiv.org/abs/2403.16108) if you find it useful:
+Please cite our [paper](https://arxiv.org/abs/2601.04807) if you find it useful:
 
 
 ```
-@misc{gonzalez2024transformer,
+@misc{llorenteParallel,
       title={Parallelizing Node-Level Explainability in Graph Neural Networks}, 
-      author={Oscar Llorente Gonzalez},
-      year={2024},
-      eprint={2403.16108},
+      author={Llorente, Oscar and Boal, Jaime and  S{\'a}nchez-{\'U}beda, Eugenio F and Diaz-Cano Antonio and Familiar-Cabero},
+      year={2026},
+      eprint={2601.04807},
       archivePrefix={arXiv},
       primaryClass={cs.LG}
 }
