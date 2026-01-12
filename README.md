@@ -94,13 +94,11 @@ Please cite our [paper](https://arxiv.org/abs/2601.04807) if you find it useful:
 
 
 ```
-@misc{llorenteParallel,
-      title={Parallelizing Node-Level Explainability in Graph Neural Networks}, 
-      author={Llorente, Oscar and Boal, Jaime and  S{\'a}nchez-{\'U}beda, Eugenio F and Diaz-Cano Antonio and Familiar-Cabero},
-      year={2026},
-      eprint={2601.04807},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG}
+@article{llorente2026parallelizing,
+  title={Parallelizing Node-Level Explainability in Graph Neural Networks},
+  author={Llorente, Oscar and Boal, Jaime and S{\'a}nchez-{\'U}beda, Eugenio F and Diaz-Cano, Antonio and Familiar, Miguel},
+  journal={arXiv preprint arXiv:2601.04807},
+  year={2026}
 }
 ```
 
