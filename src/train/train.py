@@ -12,8 +12,7 @@ from torchmetrics.classification import MulticlassAccuracy
 from torch_geometric.data import InMemoryDataset
 from tqdm.auto import tqdm
 
-
-# own modules
+# Own modules
 from src.utils import (
     set_seed,
     load_data,

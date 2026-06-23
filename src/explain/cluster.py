@@ -20,7 +20,7 @@ def get_extended_data(
     reconstructed.
 
     Args:
-        data: initial data object. Mandaroty attributes: [node_ids, x,
+        data: initial data object. Mandatory attributes: [node_ids, x,
             edge_index].
         num_hops: number of hops for the reconstruction.
         dropout_rate: rate for the dropout.
