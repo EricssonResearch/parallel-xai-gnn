@@ -66,19 +66,26 @@ def main() -> None:
     x = x[subset, :]
     node_ids: torch.Tensor = torch.arange(x.shape[0]).to(device)
     data = Data(x=x, edge_index=edge_index, node_ids=node_ids)
+    
+    # Get extended data with full reconstruction
     data_extended = get_extended_data(data, 2, 1, 0.0, device)
-
-    # Update data extended
     data_extended = get_updated_data(data_extended)
 
-    # Create visualizations
-    # draw_original(data)
-    # draw_clusters(data, data_extended)
-    # full_reconstruction(data, data_extended)
+    # Create full visualizations
+    draw_original(data)
+    draw_clusters(data, data_extended)
+    reconstruction(data, data_extended, "full_reconstruction")
     draw_original_xai(data, model, torch.tensor([0]))
     draw_original_xai(data, model, torch.tensor([5]))
     draw_original_xai(data, model, torch.tensor([0, 5]))
     draw_cluster_xai(data, data_extended, model, torch.tensor([0, 5]))
+    
+    # Get extended data with full reconstruction
+    data_extended = get_extended_data(data, 2, 1, 0.5, device)
+    data_extended = get_updated_data(data_extended)
+    
+    # Create dropout visualizations
+    reconstruction(data, data_extended, "drop_reconstruction")
 
     return None
 
@@ -200,21 +207,18 @@ def draw_clusters(
 
 
 @torch.no_grad()
-def full_reconstruction(
+def reconstruction(
     data,
     data_extended,
+    tag: str
 ) -> None:
     """
-    This function creates visualizations.
+    This function creates a visualization of the full reconstruction.
 
     Args:
-        x: Node matrix. Dimensions: [number of nodes, number of node
-            features].
-        edge_index: Edge index. Dimensions: [2, number of edges].
-        node_ids: Node ids. Dimensions: [number of nodes].
-        feature_map: Feature map. Dimensions: [number of nodes, number
-            of nodes].
-        method_name: Method name.
+        data: Original data object, to setup the correct layout.
+        data_extended: Data object with the reconstructed borders.
+        tag: Tag to save the visualization with this tag.
 
     Returns:
         None.
@@ -261,7 +265,7 @@ def full_reconstruction(
     nx.draw_networkx_edges(g, pos=pos, node_size=1000)
     nx.draw_networkx_labels(g, pos=pos, labels=labels)
     plt.axis("off")
-    plt.savefig(f"{RESULTS_PATH}/full_reconstruction.pdf", bbox_inches="tight")
+    plt.savefig(f"{RESULTS_PATH}/{tag}.pdf", bbox_inches="tight")
     plt.show()
     plt.close()
 
