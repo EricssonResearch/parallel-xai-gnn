@@ -66,7 +66,7 @@ def main() -> None:
     x = x[subset, :]
     node_ids: torch.Tensor = torch.arange(x.shape[0]).to(device)
     data = Data(x=x, edge_index=edge_index, node_ids=node_ids)
-    
+
     # Get extended data with full reconstruction
     data_extended = get_extended_data(data, 2, 1, 0.0, device)
     data_extended = get_updated_data(data_extended)
@@ -79,11 +79,11 @@ def main() -> None:
     draw_original_xai(data, model, torch.tensor([5]))
     draw_original_xai(data, model, torch.tensor([0, 5]))
     draw_cluster_xai(data, data_extended, model, torch.tensor([0, 5]))
-    
+
     # Get extended data with full reconstruction
     data_extended = get_extended_data(data, 2, 1, 0.5, device)
     data_extended = get_updated_data(data_extended)
-    
+
     # Create dropout visualizations
     reconstruction(data, data_extended, "drop_reconstruction")
 
@@ -207,11 +207,7 @@ def draw_clusters(
 
 
 @torch.no_grad()
-def reconstruction(
-    data,
-    data_extended,
-    tag: str
-) -> None:
+def reconstruction(data, data_extended, tag: str) -> None:
     """
     This function creates a visualization of the full reconstruction.
 

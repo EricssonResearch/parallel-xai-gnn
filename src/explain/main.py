@@ -19,7 +19,7 @@ def main() -> None:
     """
 
     # Define experiment to execute
-    experiment_name: Literal["examples", "full_tables", "drop_tables"] = "examples"
+    experiment_name: Literal["examples", "full_tables", "drop_tables"] = "drop_tables"
 
     match experiment_name:
         case "examples":

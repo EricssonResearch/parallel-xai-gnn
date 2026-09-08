@@ -6,7 +6,7 @@ In this README you will find as much information as possible so you be able to r
 
 ## Code structure
 
-In this section we will explain what you can fnd in the different files that we have in this repository. It is important to clarify that all teh paths that will be used for storing results or data will be created if thet don't exist.
+In this section we will explain what you can fnd in the different files that we have in this repository. It is important to clarify that all teh paths that will be used for storing results or data will be created if they don't exist.
 
 ### src module
 
@@ -45,6 +45,8 @@ The `explain` folder is the one that contains most of the code for the present r
     - examples.py: This file generates two example visualizations of explainability for a GNN in a node classification problem. They will be stored inside the `results/images` folder. Visualizations will be for the `Saliency Map` technique and `GNNExplainer`. They will be stored in pdf files.
     - full_tables.py: This file computes the results for the full reconstruction method. Results will be saved inside the `results/full` folder. There you will find two folders, `tables` and `charts`. `tables` folder stores all the dataframes with the results in csv and latex format. `charts` contains charts comparing the evolution of the graph size and the execution time.
     - drop_tables.py: This file computes the results for the dropout reconstruction method. Results will be saved inside the `results/drop` folder. Here we have only created the dataframes, which will also be in csv and latex formats. 
+
+*Note: to maintain a similar initialization to compare with the GNNExplainer technique we initialize the masks to a constant value, in this case 1.*
 
 - executions.py: This file contains the code for the different executions to compute the explainability. Here we can find the following functions:
     1. compute_xai: This is a generic function to compute the explainability with the proper execution and store the time and the results. Specifically, this will execute the `original_xai` function if the number of clusters is 1, and `parallel_xai` if it exceeds 1. It will execute each technique 3 times and then take the average of these three executions. Since several computations are repeated throughout the different experiments, this function will create a `checkpoints` folder and store the sparse matrices with the time of execution. This folder will weigh around 1.3 GB when all the results are computed. 

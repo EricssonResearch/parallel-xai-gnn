@@ -12,6 +12,9 @@ import torch
 import torch.nn.functional as F
 import torch_geometric
 
+# Own modules
+from src.explain.gnn_explainer import GNNExplainerAlgorithm
+
 
 class Explainer(ABC):
     """
@@ -445,7 +448,7 @@ class GNNExplainer(Explainer):
         # Define explainer and targets
         self.explainer = torch_geometric.explain.Explainer(
             self.model,
-            torch_geometric.explain.GNNExplainer(),
+            GNNExplainerAlgorithm(),
             explanation_type="model",
             node_mask_type="object",
             model_config={
@@ -463,7 +466,10 @@ class GNNExplainer(Explainer):
         self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: torch.Tensor
     ) -> torch.Tensor:
         """
-        This method computes the explainability of node matrix.
+        This method computes the explainability of node matrix. This
+        function sets the seed before computing the explanation so it
+        is deterministic. Otherwise, explanation will be different each
+        time this explained is executed.
 
         Args:
             x: Node matrix. Dimensions: [number of nodes, number of
