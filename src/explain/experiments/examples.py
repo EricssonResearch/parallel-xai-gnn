@@ -4,22 +4,22 @@ This module is to create examples visualizations.
 
 # Standard libraries
 import os
-from typing import Literal, Type
+from typing import Literal, Type, cast
 
 # 3pps
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
 import torch
 import torch_geometric
-from torch_geometric.data import InMemoryDataset, Data
+from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.utils import k_hop_subgraph
-import numpy as np
-import networkx as nx
-import matplotlib.pyplot as plt
 
 # Own modules
-from src.utils import set_seed, load_data
-from src.explain.utils import subgraph
-from src.explain.methods import Explainer, SaliencyMap, GNNExplainer
 from src.explain.cluster import get_extended_data
+from src.explain.methods import Explainer, GNNExplainer, SaliencyMap
+from src.explain.utils import subgraph
+from src.utils import load_data, set_seed
 
 # Static variables
 DATA_PATH: str = "data"
@@ -56,8 +56,11 @@ def main() -> None:
     model.eval()
 
     # Pass elements to correct device
-    x: torch.Tensor = dataset[0].x.float().to(device)
-    edge_index: torch.Tensor = dataset[0].edge_index.long().to(device)
+    data = cast(Data, dataset[0])
+    x: torch.Tensor = cast(torch.Tensor, data.x)
+    x = x.float().to(device)
+    edge_index: torch.Tensor = cast(torch.Tensor, data.edge_index)
+    edge_index = edge_index.long().to(device)
 
     # Get small example
     subset, edge_index, _, _ = k_hop_subgraph(
@@ -283,7 +286,9 @@ def draw_original_xai(
     """
 
     explainer = SaliencyMap(model)
-    feature_map = explainer.explain(data.x, data.edge_index, node_ids)
+    feature_map = explainer.explain(
+        cast(torch.Tensor, data.x), cast(torch.Tensor, data.edge_index), node_ids
+    )
     feature_map = (feature_map - torch.amin(feature_map)) / (
         torch.amax(feature_map) - torch.amin(feature_map)
     )
@@ -343,7 +348,11 @@ def draw_cluster_xai(
 
     # Get explanations
     explainer = SaliencyMap(model)
-    feature_map = explainer.explain(data_extended.x, data_extended.edge_index, node_ids)
+    feature_map = explainer.explain(
+        cast(torch.Tensor, data_extended.x),
+        cast(torch.Tensor, data_extended.edge_index),
+        node_ids,
+    )
     feature_map[data_extended.cluster_ids == 0] = (
         feature_map[data_extended.cluster_ids == 0]
         - torch.amin(feature_map[data_extended.cluster_ids == 0])
@@ -517,10 +526,12 @@ def get_updated_data(data_extended: Data) -> Data:
     )
 
     # Update edge index
-    _, data_extended.edge_index = subgraph(update_node_ids, data_extended.edge_index)
+    _, data_extended.edge_index = subgraph(
+        update_node_ids, cast(torch.Tensor, data_extended.edge_index)
+    )
 
     # Update x, cluster_ids and batch_indexes
-    data_extended.x = data_extended.x[update_node_ids]
+    data_extended.x = cast(torch.Tensor, data_extended.x)[update_node_ids]
     data_extended.cluster_ids = data_extended.cluster_ids[update_node_ids]
     data_extended.batch_indexes = data_extended.batch_indexes[update_node_ids]
     data_extended.node_ids = data_extended.node_ids[update_node_ids]

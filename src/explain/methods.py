@@ -4,8 +4,8 @@ This module contains the code for the explainability methods.
 
 # Standard libraries
 import copy
-from typing import Callable
 from abc import ABC, abstractmethod
+from typing import Callable
 
 # 3pps
 import torch

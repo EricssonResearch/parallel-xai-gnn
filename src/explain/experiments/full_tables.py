@@ -4,25 +4,26 @@ This module contains the code for the experiment of full reconstruction.
 
 # Standard libraries
 import os
+from typing import cast
 
 # 3pps
-import torch
-from torch_geometric.data import Data
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+import numpy as np
+import pandas as pd
+import torch
+from torch_geometric.data import Data
 from tqdm.auto import tqdm
 
 # Own modules
+from src.explain.executions import compute_xai
+from src.explain.methods import Explainer
+from src.explain.utils import CHECKPOINTS_PATH, METHODS, NUM_CLUSTERS, load_artifacts
 from src.utils import (
-    set_torch_config,
     DATASETS_NAME,
     MODEL_NAMES,
+    set_torch_config,
 )
-from src.explain.utils import load_artifacts, METHODS, NUM_CLUSTERS, CHECKPOINTS_PATH
-from src.explain.methods import Explainer
-from src.explain.executions import compute_xai
 
 # Static variables
 RESULTS_PATH: str = "results/full"
@@ -103,13 +104,15 @@ def main() -> None:
                     )
 
                     # Append results
-                    increment_nodes: int = num_extended_nodes - data.x.shape[0]
+                    x: torch.Tensor = cast(torch.Tensor, data.x)
+                    edge_index: torch.Tensor = cast(torch.Tensor, data.edge_index)
+                    increment_nodes: int = num_extended_nodes - x.shape[0]
                     increment_nodes_percentage: float = (
-                        100 * increment_nodes / data.x.shape[0]
+                        100 * increment_nodes / x.shape[0]
                     )
-                    increment_edges: int = num_extended_edges - data.edge_index.shape[1]
+                    increment_edges: int = num_extended_edges - edge_index.shape[1]
                     increment_edges_percentage: float = (
-                        100 * increment_edges / data.edge_index.shape[1]
+                        100 * increment_edges / edge_index.shape[1]
                     )
                     results.append(
                         [
@@ -135,7 +138,7 @@ def main() -> None:
                         "Increment in Number of Nodes (%)",
                         "Increment in Number of Edges",
                         "Increment in Number of Edges (%)",
-                    ],
+                    ],  # ty: ignore[invalid-argument-type]
                 )
 
                 # Create results dir if it doesn't exist

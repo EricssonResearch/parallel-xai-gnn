@@ -3,24 +3,24 @@ This module contains auxiliary functionality for the explain module.
 """
 
 # Standard libraries
-from typing import Optional, Literal, Type, TypeAlias
+from typing import Literal, Optional, Type, TypeAlias
 
 # 3pps
 import torch
-from torch_geometric.data import InMemoryDataset, Data
+from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.utils.map import map_index
 from torch_geometric.utils.mask import index_to_mask
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 
 # Own modules
 from src.explain.methods import (
-    Explainer,
-    SaliencyMap,
     DeConvNet,
-    GuidedBackprop,
+    Explainer,
     GNNExplainer,
+    GuidedBackprop,
+    SaliencyMap,
 )
-from src.utils import load_data, DATA_PATH, LOAD_PATH
+from src.utils import DATA_PATH, LOAD_PATH, load_data
 
 # Define types
 MethodName: TypeAlias = Literal[
@@ -29,12 +29,12 @@ MethodName: TypeAlias = Literal[
 
 # Static variables
 METHODS: dict[MethodName, Type[Explainer]] = {
-    "Saliency Map": SaliencyMap,
-    "Deconvnet": DeConvNet,
-    "Guided-Backprop": GuidedBackprop,
+    # "Saliency Map": SaliencyMap,
+    # "Deconvnet": DeConvNet,
+    # "Guided-Backprop": GuidedBackprop,
     "GNNExplainer": GNNExplainer,
 }
-NUM_CLUSTERS: tuple[int, ...] = (1, 16, 32, 64, 128)
+NUM_CLUSTERS: tuple[int, ...] = (1, 8, 16, 32, 64, 128)
 DROPOUT_RATES: tuple[float, ...] = (0.0, 0.2, 0.5, 0.7, 1.0)
 ITERATIONS: int = 3
 CHECKPOINTS_PATH: str = "checkpoints"
@@ -140,8 +140,12 @@ def subgraph(
 
     Examples:
 
-        >>> edge_index = torch.tensor([[0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6],
-        ...                            [1, 0, 2, 1, 3, 2, 4, 3, 5, 4, 6, 5]])
+        >>> edge_index = torch.tensor(
+        ...     [
+        ...         [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6],
+        ...         [1, 0, 2, 1, 3, 2, 4, 3, 5, 4, 6, 5],
+        ...     ]
+        ... )
         >>> edge_attr = torch.tensor([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
         >>> subset = torch.tensor([3, 4, 5])
         >>> subgraph(subset, edge_index, edge_attr)
@@ -165,7 +169,7 @@ def subgraph(
         subset = torch.tensor(subset, dtype=torch.long, device=device)
 
     if subset.dtype != torch.bool:
-        num_nodes = maybe_num_nodes(edge_index, num_nodes)
+        num_nodes = max(maybe_num_nodes(edge_index, num_nodes), int(subset.amax()) + 1)
         node_mask = index_to_mask(subset, size=num_nodes)
     else:
         num_nodes = subset.size(0)
@@ -207,9 +211,6 @@ def load_artifacts(
 
     # Get dataset and device
     dataset: InMemoryDataset = load_data(dataset_name, f"{DATA_PATH}/{dataset_name}")
-
-    # Check device
-    print(f"device: {device}")
 
     # Pass elements to correct device and build data object
     x: torch.Tensor = dataset[0].x.float()

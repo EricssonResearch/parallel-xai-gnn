@@ -4,18 +4,18 @@ This module is to create examples visualizations.
 
 # Standard libraries
 import os
-from typing import Literal, Type
+from typing import Literal, Type, cast
 
 # 3pps
+import matplotlib.pyplot as plt
+import networkx as nx
 import torch
 import torch_geometric
-from torch_geometric.data import InMemoryDataset
-import networkx as nx
-import matplotlib.pyplot as plt
+from torch_geometric.data import Data, InMemoryDataset
 
 # Own modules
-from src.utils import set_seed, load_data
-from src.explain.methods import Explainer, SaliencyMap, GNNExplainer
+from src.explain.methods import Explainer, GNNExplainer, SaliencyMap
+from src.utils import load_data, set_seed
 
 # Static variables
 DATA_PATH: str = "data"
@@ -55,8 +55,9 @@ def main() -> None:
     model.eval()
 
     # Pass elements to correct device
-    x: torch.Tensor = dataset[0].x.float().to(device)
-    edge_index: torch.Tensor = dataset[0].edge_index.long().to(device)
+    data = cast(Data, dataset[0])
+    x: torch.Tensor = cast(torch.Tensor, data.x).float().to(device)
+    edge_index: torch.Tensor = cast(torch.Tensor, data.edge_index).long().to(device)
     node_ids: torch.Tensor = torch.arange(x.shape[0]).to(device)
 
     # Iter over methods

@@ -5,8 +5,9 @@ This module contains the code to choose which experiment to execute.
 # Standard libraries
 from typing import Literal
 
+# Own modules
 # Own module
-from src.explain.experiments import examples, full_tables, drop_tables
+from src.explain.experiments import drop_tables, examples, full_tables
 
 
 def main() -> None:

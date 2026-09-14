@@ -4,22 +4,23 @@ This module contains code to train the toy model.
 
 # Standard libraries
 import os
+from typing import cast
 
 # 3pps
 import torch
-from torch.utils.tensorboard import SummaryWriter
-from torchmetrics.classification import MulticlassAccuracy
 import torch_geometric
-from torch_geometric.data import InMemoryDataset
+from torch.utils.tensorboard import SummaryWriter
+from torch_geometric.data import Data, InMemoryDataset
+from torchmetrics.classification import MulticlassAccuracy
 from tqdm.auto import tqdm
 
 # Own modules
 from src.utils import (
-    set_seed,
-    load_data,
     DATA_PATH,
     LOAD_PATH,
     DatasetName,
+    load_data,
+    set_seed,
 )
 
 # set seed and define device
@@ -68,11 +69,12 @@ def main() -> None:
     accuracy: torch.nn.Module = MulticlassAccuracy(dataset.num_classes).to(device)
 
     # Pass elements to correct device
-    x: torch.Tensor = dataset[0].x.float().to(device)
-    edge_index: torch.Tensor = dataset[0].edge_index.long().to(device)
-    y: torch.Tensor = dataset[0].y.long().to(device)
-    train_mask: torch.Tensor = dataset[0].train_mask.to(device)
-    val_mask: torch.Tensor = dataset[0].val_mask.to(device)
+    data: Data = cast(Data, dataset[0])
+    x: torch.Tensor = cast(torch.Tensor, data.x).float().to(device)
+    edge_index: torch.Tensor = cast(torch.Tensor, data.edge_index).long().to(device)
+    y: torch.Tensor = cast(torch.Tensor, data.y).long().to(device)
+    train_mask: torch.Tensor = data.train_mask.to(device)
+    val_mask: torch.Tensor = data.val_mask.to(device)
 
     # Iter over epochs
     epoch: int

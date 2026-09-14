@@ -8,9 +8,9 @@ import random
 from typing import Literal, TypeAlias
 
 # 3pps
+import numpy as np
 import torch
 import torch_geometric
-import numpy as np
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.transforms import NormalizeFeatures
 

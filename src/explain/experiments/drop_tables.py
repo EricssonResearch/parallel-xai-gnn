@@ -5,29 +5,30 @@ experiments.
 
 # Standard libraries
 import os
+from typing import cast
 
 # 3pps
-import torch
 import numpy as np
 import pandas as pd
+import torch
 from torch_geometric.data import Data
 from tqdm.auto import tqdm
 
 # Own modules
-from src.utils import (
-    set_torch_config,
-    DATASETS_NAME,
-    MODEL_NAMES,
-)
+from src.explain.executions import compute_xai
+from src.explain.methods import Explainer
 from src.explain.utils import (
-    load_artifacts,
-    METHODS,
-    NUM_CLUSTERS,
     CHECKPOINTS_PATH,
     DROPOUT_RATES,
+    METHODS,
+    NUM_CLUSTERS,
+    load_artifacts,
 )
-from src.explain.methods import Explainer
-from src.explain.executions import compute_xai
+from src.utils import (
+    DATASETS_NAME,
+    MODEL_NAMES,
+    set_torch_config,
+)
 
 # static variables
 RESULTS_PATH: str = "results2/drop"
@@ -155,15 +156,15 @@ def main() -> None:
                             )
 
                         # Append results
-                        increment_nodes: int = num_extended_nodes - data.x.shape[0]
+                        x: torch.Tensor = cast(torch.Tensor, data.x)
+                        edge_index: torch.Tensor = cast(torch.Tensor, data.edge_index)
+                        increment_nodes: int = num_extended_nodes - x.shape[0]
                         increment_nodes_percentage: float = (
-                            100 * increment_nodes / data.x.shape[0]
+                            100 * increment_nodes / x.shape[0]
                         )
-                        increment_edges: int = (
-                            num_extended_edges - data.edge_index.shape[1]
-                        )
+                        increment_edges: int = num_extended_edges - edge_index.shape[1]
                         increment_edges_percentage: float = (
-                            100 * increment_edges / data.edge_index.shape[1]
+                            100 * increment_edges / edge_index.shape[1]
                         )
                         results = [
                             num_clusters,
@@ -202,7 +203,7 @@ def main() -> None:
                         "Affected nodes threshold 0.5 (%)",
                         "Affected neighbors threshold 0.7 (%)",
                         "Affected nodes threshold 0.7 (%)",
-                    ],
+                    ],  # ty: ignore[invalid-argument-type]
                 )
 
                 # Create results dir if it doesn't exist

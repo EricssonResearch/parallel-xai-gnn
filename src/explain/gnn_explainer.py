@@ -1,12 +1,12 @@
 """
-This module implements a custom version of the GNNExplainer algorithm. 
-This custom version initializes the mask to ones instead of random, 
-so we can compare if the original explainability and the parallel one 
+This module implements a custom version of the GNNExplainer algorithm.
+This custom version initializes the mask to ones instead of random,
+so we can compare if the original explainability and the parallel one
 are exactly the same.
 """
 
 # Standard libraries
-from typing import Union, Optional
+from typing import Optional, Union
 
 # 3pps
 import torch
@@ -50,8 +50,7 @@ class GNNExplainerAlgorithm(ExplainerAlgorithm):
     ) -> Explanation:
         if isinstance(x, dict) or isinstance(edge_index, dict):
             raise ValueError(
-                f"Heterogeneous graphs not yet supported in "
-                f"'{self.__class__.__name__}'"
+                f"Heterogeneous graphs not yet supported in '{self.__class__.__name__}'"
             )
 
         self._train(model, x, edge_index, target=target, index=index, **kwargs)

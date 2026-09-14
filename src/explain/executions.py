@@ -4,18 +4,17 @@ This module contains the code for XAI executions.
 
 # Standard libraries
 import os
-import time
 import pickle
+import time
 
 # 3pps
 import torch
-from torch_geometric.data import Data
 from scipy.sparse import lil_matrix
-from tqdm.auto import tqdm
+from torch_geometric.data import Data
 
 # Own modules
-from src.explain.methods import Explainer
 from src.explain.cluster import get_extended_data
+from src.explain.methods import Explainer
 from src.explain.sparse import normalize_sparse_matrix
 from src.explain.utils import ITERATIONS
 
@@ -139,7 +138,7 @@ def original_xai(
     data = data.to(device)
 
     # iter over node ids
-    for node_id in tqdm(data.node_ids.tolist()):
+    for node_id in data.node_ids.tolist():
         # compute feature map
         feature_map: torch.Tensor = explainer.explain(data.x, data.edge_index, node_id)
 
@@ -214,7 +213,7 @@ def parallel_xai(
     )
 
     # Iter over batches
-    for batch_index in tqdm(range(num_batches)):
+    for batch_index in range(num_batches):
         # compute xai ids
         xai_ids: torch.Tensor = new_node_ids[data_extended.batch_indexes == batch_index]
 

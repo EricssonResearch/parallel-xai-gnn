@@ -7,7 +7,7 @@ from typing import Literal, Union
 
 # 3pps
 import numpy as np
-from scipy.sparse import lil_matrix, coo_matrix
+from scipy.sparse import coo_matrix, lil_matrix
 
 
 def normalize_sparse_matrix(

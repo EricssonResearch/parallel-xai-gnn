@@ -4,26 +4,27 @@ This module contains code to train the models.
 
 # Standard libraries
 import os
+from typing import cast
 
 # 3pps
 import torch
 from torch.utils.tensorboard import SummaryWriter
+from torch_geometric.data import Data, InMemoryDataset
 from torchmetrics.classification import MulticlassAccuracy
-from torch_geometric.data import InMemoryDataset
 from tqdm.auto import tqdm
 
 # Own modules
+from src.train.models import GAT, GCN
 from src.utils import (
-    set_seed,
-    load_data,
     DATA_PATH,
-    LOAD_PATH,
     DATASETS_NAME,
+    LOAD_PATH,
     MODEL_NAMES,
     DatasetName,
     ModelName,
+    load_data,
+    set_seed,
 )
-from src.train.models import GCN, GAT
 
 # set seed and define device
 set_seed(42)
@@ -83,29 +84,32 @@ def main() -> None:
                 device
             )
 
-            # pass elements to correct device
-            x: torch.Tensor = dataset[0].x.float().to(device)
-            edge_index: torch.Tensor = dataset[0].edge_index.long().to(device)
-            y: torch.Tensor = dataset[0].y.long().to(device)
-            train_mask: torch.Tensor = dataset[0].train_mask.to(device)
-            val_mask: torch.Tensor = dataset[0].val_mask.to(device)
+            # Pass elements to correct device
+            data: Data = cast(Data, dataset[0])
+            x: torch.Tensor = cast(torch.Tensor, data.x).float().to(device)
+            edge_index: torch.Tensor = (
+                cast(torch.Tensor, data.edge_index).long().to(device)
+            )
+            y: torch.Tensor = cast(torch.Tensor, data.y).long().to(device)
+            train_mask: torch.Tensor = data.train_mask.to(device)
+            val_mask: torch.Tensor = data.val_mask.to(device)
 
-            # iter over epochs
+            # Iter over epochs
             epoch: int
             for epoch in tqdm(range(epochs)):
-                # activate train mode
+                # Activate train mode
                 model.train()
 
-                # compute outputs and loss
+                # Compute outputs and loss
                 outputs: torch.Tensor = model(x, edge_index)
                 loss_value = loss(outputs[train_mask, :], y[train_mask])
 
-                # optimize
+                # Optimize
                 optimizer.zero_grad()
                 loss_value.backward()
                 optimizer.step()
 
-                # writer on tensorboard
+                # Writer on tensorboard
                 writer.add_scalar("loss/train", loss_value.item(), epoch)
                 writer.add_scalar(
                     "accuracy/train",
