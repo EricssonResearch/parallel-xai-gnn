@@ -44,7 +44,7 @@ def normalize_sparse_matrix(
     min_ = min_[max_ != 0]
     max_ = max_[max_ != 0]
 
-    # compute counts
+    # Compute counts
     counts: np.ndarray = np.unique(sparse_matrix_coo.row, return_counts=True)[1]
 
     # compute repeated
@@ -53,7 +53,7 @@ def normalize_sparse_matrix(
 
     # normalize
     sparse_matrix_coo.data = (sparse_matrix_coo.data - min_repeated) / (
-        max_repeated - min_repeated
+        max_repeated - min_repeated + 1e-8
     )
 
     # change return type
@@ -64,7 +64,7 @@ def normalize_sparse_matrix(
     else:
         raise ValueError("Invalid return type value")
 
-    return sparse_matrix_coo
+    return sparse_matrix
 
 
 # class SparseTensor:

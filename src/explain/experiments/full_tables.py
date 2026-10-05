@@ -96,6 +96,7 @@ def main() -> None:
                     # Compute XAI
                     _, num_extended_nodes, num_extended_edges, exec_time = compute_xai(
                         explainer,
+                        "cluster",
                         num_clusters,
                         0.0,
                         data,

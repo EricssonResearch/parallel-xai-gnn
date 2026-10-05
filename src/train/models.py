@@ -20,34 +20,48 @@ class GCN(torch.nn.Module):
 
     def __init__(
         self,
-        input_size: int,
-        output_size: int,
-        hidden_channels: int = 64,
-        prob_drop: float = 0.5,
+        input_dim: int,
+        output_dim: int,
+        hidden_dim: int = 64,
+        drop_rate: float = 0.5,
     ) -> None:
         """
         This method is the constructor for the GCN class.
 
         Args:
-            input_size: Number of node features.
-            hidden_channels: Size between the layers.
-            output_size: Number of possible classes.
+            input_dim: Number of node features.
+            output_dim: Number of possible classes.
+            hidden_dim: Size between the layers.
+            drop_rate: Dropout rate for the model.
 
         Returns:
             None.
         """
 
-        # call superclass constructor
+        # Call superclass constructor
         super().__init__()
 
-        # define layers
-        self.conv1: torch_geometric.nn.MessagePassing = torch_geometric.nn.GCNConv(
-            input_size, hidden_channels
+        # Define layers
+        self.gnn_backbone = torch_geometric.nn.Sequential(
+            "x, edge_index",
+            [
+                (
+                    torch_geometric.nn.GCNConv(input_dim, hidden_dim),
+                    "x, edge_index -> x",
+                ),
+                torch.nn.ReLU(),
+                torch.nn.Dropout(drop_rate),
+                (
+                    torch_geometric.nn.GCNConv(hidden_dim, hidden_dim),
+                    "x, edge_index -> x",
+                ),
+            ],
         )
-        self.relu: torch.nn.Module = torch.nn.ReLU()
-        self.dropout: torch.nn.Module = torch.nn.Dropout(prob_drop)
-        self.conv2: torch_geometric.nn.MessagePassing = torch_geometric.nn.GCNConv(
-            hidden_channels, output_size
+        self.mlp = torch.nn.Sequential(
+            torch.nn.Linear(hidden_dim, hidden_dim),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(drop_rate),
+            torch.nn.Linear(hidden_dim, output_dim),
         )
 
         return None
@@ -66,11 +80,9 @@ class GCN(torch.nn.Module):
                 output size].
         """
 
-        # compute outputs
-        outputs: torch.Tensor = self.conv1(inputs, edge_index)
-        outputs = self.relu(outputs)
-        outputs = self.dropout(outputs)
-        outputs = self.conv2(outputs, edge_index)
+        # Compute outputs
+        outputs: torch.Tensor = self.gnn_backbone(inputs, edge_index)
+        outputs = self.mlp(outputs)
 
         return outputs
 
@@ -86,36 +98,54 @@ class GAT(torch.nn.Module):
         conv2: second GNN
     """
 
+    # Define attributes
+    gnn_backbone: torch.nn.Module
+    mlp: torch.nn.Module
+
     def __init__(
         self,
-        input_size: int,
-        output_size: int,
-        hidden_channels: int = 64,
-        prob_drop: float = 0.5,
+        input_dim: int,
+        output_dim: int,
+        hidden_dim: int = 64,
+        drop_rate: float = 0.5,
     ) -> None:
         """
-        This method is the constructor for the GCN class.
+        This method is the constructor for the class.
 
         Args:
-            input_size: number of node features.
-            hidden_channels: size between the layers.
-            output_size: number of possible classes.
+            input_dim: Number of node features.
+            output_dim: Number of possible classes.
+            hidden_dim: Size between the layers.
+            drop_rate: Dropout rate for the model.
 
         Returns:
             None.
         """
 
-        # call superclass constructor
+        # Call superclass constructor
         super().__init__()
 
-        # define layers
-        self.conv1: torch_geometric.nn.MessagePassing = torch_geometric.nn.GATv2Conv(
-            input_size, hidden_channels
+        # Define layers
+        self.gnn_backbone = torch_geometric.nn.Sequential(
+            "x, edge_index",
+            [
+                (
+                    torch_geometric.nn.GATv2Conv(input_dim, hidden_dim),
+                    "x, edge_index -> x",
+                ),
+                torch.nn.ReLU(),
+                torch.nn.Dropout(drop_rate),
+                (
+                    torch_geometric.nn.GATv2Conv(hidden_dim, hidden_dim),
+                    "x, edge_index -> x",
+                ),
+            ],
         )
-        self.relu: torch.nn.Module = torch.nn.ReLU()
-        self.dropout: torch.nn.Module = torch.nn.Dropout(prob_drop)
-        self.conv2: torch_geometric.nn.MessagePassing = torch_geometric.nn.GATv2Conv(
-            hidden_channels, output_size
+        self.mlp = torch.nn.Sequential(
+            torch.nn.Linear(hidden_dim, hidden_dim),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(drop_rate),
+            torch.nn.Linear(hidden_dim, output_dim),
         )
 
     def forward(self, inputs: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
@@ -132,10 +162,8 @@ class GAT(torch.nn.Module):
                 output size].
         """
 
-        # compute outputs
-        outputs: torch.Tensor = self.conv1(inputs, edge_index)
-        outputs = self.relu(outputs)
-        outputs = self.dropout(outputs)
-        outputs = self.conv2(outputs, edge_index)
+        # Compute outputs
+        outputs: torch.Tensor = self.gnn_backbone(inputs, edge_index)
+        outputs = self.mlp(outputs)
 
         return outputs

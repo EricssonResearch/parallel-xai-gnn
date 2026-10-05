@@ -5,7 +5,7 @@ This module contains the code for the explainability methods.
 # Standard libraries
 import copy
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, override, cast
 
 # 3pps
 import torch
@@ -423,6 +423,93 @@ class SmoothGrad(GradientExplainer):
         return feature_maps
 
 
+class GradCAM(GradientExplainer):
+    """
+    This class implements the GradCAM layer for node classification.
+    """
+
+    @torch.enable_grad()
+    def _compute_alphas(
+        self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        This method computes the gradients of the outputs with respect
+        to the input.
+
+        Args:
+            x: Node tensor. Dimensions: [number of nodes,
+                number of node features].
+            edge_index: Edge index tensor. Dimensions: [2,
+                number of edges].
+            node_ids: Node ids tensor. Dimensions: [number of ids to
+                explain].
+
+        Raises:
+            RuntimeError: Error in gradient computation.
+
+        Returns:
+            Alphas tensor. Dimensions: [number of nodes, 1].
+            Embeddings tensor (after computing all GNN layers).
+                Dimensions: [number of nodes, hidden dim].
+        """
+
+        # Get parts of the model
+        gnn_backbone: torch.nn.Module = cast(torch.nn.Module, self.model.gnn_backbone)
+        mlp: torch.nn.Module = cast(torch.nn.Module, self.model.mlp)
+
+        # Make GNN predictions
+        with torch.no_grad():
+            embeddings: torch.Tensor = gnn_backbone(x, edge_index)
+
+        # Compute final outputs
+        embeddings.requires_grad_(True)
+        outputs = mlp(embeddings)
+        max_scores = torch.amax(outputs, dim=1)
+
+        # Backward pass
+        max_scores[node_ids].sum().backward()
+
+        # Raise exception if there is no grad
+        if embeddings.grad is None:
+            raise RuntimeError("Error in gradient computation")
+
+        # Compute alphas
+        gradients = embeddings.grad.clone()
+        alphas: torch.Tensor = gradients.sum(dim=1, keepdim=True)
+
+        return alphas, embeddings
+
+    @override
+    @torch.no_grad()
+    def explain(
+        self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        This method computes the explainability of node matrix.
+
+        Args:
+            x: Node matrix. Dimensions: [number of nodes, number of
+                node features].
+            edge_index: Edge index. Dimensions: [2, number of edges].
+            node_ids: Node ids. Dimensions: [number of node ids].
+
+        Returns:
+            Feature explainability maps unnormalized. Dimensions:
+                [number of nodes].
+        """
+
+        # Get alphas and embeddings
+        alphas: torch.Tensor
+        embeddings: torch.Tensor
+        alphas, embeddings = self._compute_alphas(x, edge_index, node_ids)
+
+        # Get feature maps and interpolate to have original size
+        feature_maps: torch.Tensor = alphas * embeddings
+        feature_maps = feature_maps.mean(dim=1)
+
+        return feature_maps
+
+
 class GNNExplainer(Explainer):
     """
     This class implements the GNNExplainer.
@@ -433,7 +520,7 @@ class GNNExplainer(Explainer):
 
     def __init__(self, model: torch.nn.Module) -> None:
         """
-        Constructor for Explainer class
+        This method is the constructor for the class.
 
         Args:
             model: Model to make predictions.

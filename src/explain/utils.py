@@ -17,6 +17,7 @@ from src.explain.methods import (
     DeConvNet,
     Explainer,
     GNNExplainer,
+    GradCAM,
     GuidedBackprop,
     SaliencyMap,
 )
@@ -24,15 +25,21 @@ from src.utils import DATA_PATH, LOAD_PATH, load_data
 
 # Define types
 MethodName: TypeAlias = Literal[
-    "Saliency Map", "Deconvnet", "Guided-Backprop", "GNNExplainer"
+    "DeConvNet",
+    "GNNExplainer",
+    "GradCAM",
+    "GuidedBackprop",
+    "SaliencyMap",
 ]
+XAIType: TypeAlias = Literal["original", "k_hop", "cluster"]
 
 # Static variables
 METHODS: dict[MethodName, Type[Explainer]] = {
-    # "Saliency Map": SaliencyMap,
-    # "Deconvnet": DeConvNet,
-    # "Guided-Backprop": GuidedBackprop,
-    "GNNExplainer": GNNExplainer,
+    # "DeConvNet": DeConvNet,
+    # "GNNExplainer": GNNExplainer,
+    "GradCAM": GradCAM,
+    # "GuidedBackprop": GuidedBackprop,
+    # "SaliencyMap": SaliencyMap,
 }
 NUM_CLUSTERS: tuple[int, ...] = (1, 8, 16, 32, 64, 128)
 DROPOUT_RATES: tuple[float, ...] = (0.0, 0.2, 0.5, 0.7, 1.0)

@@ -16,12 +16,13 @@ from torch_geometric.data import Data
 from src.explain.cluster import get_extended_data
 from src.explain.methods import Explainer
 from src.explain.sparse import normalize_sparse_matrix
-from src.explain.utils import ITERATIONS
+from src.explain.utils import ITERATIONS, XAIType
 
 
 @torch.no_grad()
 def compute_xai(
     explainer: Explainer,
+    xai_type: XAIType,
     num_clusters: int,
     dropout_rate: float,
     data: Data,
@@ -34,6 +35,8 @@ def compute_xai(
 
     Args:
         explainer: Explainer.
+        xai_type: Type of XAI execution. Possible values:
+            [original, k_hop, cluster].
         num_clusters: Number of clusters.
         dropout_rate: Dropout rate.
         data: Data object.
@@ -62,11 +65,25 @@ def compute_xai(
             start = time.time()
 
             # Compute xai
-            if num_clusters == 1:
+            if xai_type == "original" or num_clusters == 1:
                 global_feature_maps = original_xai(explainer, data, device=device)
+                (
+                    global_feature_maps,
+                    num_extended_nodes,
+                    num_extended_edges,
+                ) = parallel_xai(
+                    explainer,
+                    data,
+                    data.x.shape[0],
+                    dropout_rate,
+                    device=device,
+                )
                 num_extended_nodes = data.x.shape[0]
                 num_extended_edges = data.edge_index.shape[1]
+
             else:
+                if xai_type == "k_hop":
+                    num_clusters = data.x.shape[0]
                 (
                     global_feature_maps,
                     num_extended_nodes,
@@ -246,10 +263,59 @@ def parallel_xai(
         )
 
     # Normalize
-    global_feature_maps = normalize_sparse_matrix(global_feature_maps)
+    global_feature_maps_lil = normalize_sparse_matrix(global_feature_maps)
 
     return (
-        global_feature_maps,
+        global_feature_maps_lil,
         data_extended.x.shape[0],
         data_extended.edge_index.shape[1],
     )
+
+
+@torch.no_grad()
+def jacobian_xai(
+    explainer: Explainer,
+    data: Data,
+    device: torch.device = torch.device("cpu"),
+) -> lil_matrix:
+    """
+    This function computes the original xai, iterating over the nodes
+    and computing the explainability for each node (without batches).
+
+    Args:
+        explainer: Explainer to use.
+        data: data object. Attributes: [node_ids, x, edge_index].
+        device: device for torch tensors. Defaults to
+            torch.device("cpu").
+
+    Returns:
+        Global feature maps. Dimension: [number of nodes,
+            number of nodes].
+    """
+
+    def get_predictions(x, edge_index, model):
+        outputs = model(x, edge_index.int())
+        return torch.amax(outputs, dim=1)
+
+    jac_xai_fn = torch.func.jacrev(get_predictions)
+    jac_xai_fn(data.x.to(device), data.edge_index.float().to(device), explainer.model)
+
+    # create feature maps
+    num_nodes: int = data.x.shape[0]
+    global_feature_maps: lil_matrix = lil_matrix((num_nodes, num_nodes))
+
+    # pass to right device
+    data = data.to(device)
+
+    # iter over node ids
+    for node_id in data.node_ids.tolist():
+        # compute feature map
+        feature_map: torch.Tensor = explainer.explain(data.x, data.edge_index, node_id)
+
+        # add to global feature map
+        global_feature_maps[node_id] = feature_map.cpu().numpy()
+
+    # normalize
+    global_feature_maps = normalize_sparse_matrix(global_feature_maps)
+
+    return global_feature_maps
