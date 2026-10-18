@@ -15,13 +15,15 @@ from torch_geometric.data import Data
 from tqdm.auto import tqdm
 
 # Own modules
-from src.explain.executions import compute_xai
-from src.explain.methods import Explainer
-from src.explain.utils import (
+from src.explain.constants import (
     CHECKPOINTS_PATH,
     DROPOUT_RATES,
     METHODS,
     NUM_CLUSTERS,
+)
+from src.explain.executions import compute_xai
+from src.explain.methods import Explainer
+from src.explain.utils import (
     load_artifacts,
 )
 from src.utils import (
@@ -30,8 +32,8 @@ from src.utils import (
     set_torch_config,
 )
 
-# static variables
-RESULTS_PATH: str = "results2/drop"
+# Static variables
+RESULTS_PATH: str = "results/drop"
 
 
 @torch.no_grad()
@@ -85,7 +87,7 @@ def main() -> None:
                     f"{CHECKPOINTS_PATH}/{dataset_name}/{model_name}/{method_name}"
                 )
 
-                # Create dir if it doesnt´t exist
+                # Create dir if it doesn't exist
                 if not os.path.isdir(checkpoints_folder_path):
                     # Create dirs
                     os.makedirs(checkpoints_folder_path)
@@ -117,6 +119,7 @@ def main() -> None:
                             exec_time,
                         ) = compute_xai(
                             explainer,
+                            "cluster",
                             num_clusters,
                             dropout_rate,
                             data,

@@ -76,7 +76,7 @@ docstring-code-format = true
 
 [tool.ruff.lint]
 select = ["F", "PL", "E", "D", "I", "W"]
-ignore = ["D212", "D200", "D202", "D205", "PLR1711", "PLR0913"]
+ignore = ["D212", "D200", "D202", "D205", "PLR1711", "PLR0913", "PLR0917"]
 extend-select = ["D213", "W505"]
 
 [tool.ruff.lint.pydocstyle]

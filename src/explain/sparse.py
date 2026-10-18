@@ -2,17 +2,12 @@
 This module contains the code to normalize sparse tensors.
 """
 
-# Standard libraries
-from typing import Literal, Union
-
 # 3pps
 import numpy as np
 from scipy.sparse import coo_matrix, lil_matrix
 
 
-def normalize_sparse_matrix(
-    sparse_matrix: lil_matrix, return_type: Literal["lil", "coo"] = "lil"
-) -> Union[lil_matrix, coo_matrix]:
+def normalize_sparse_matrix(sparse_matrix: lil_matrix) -> lil_matrix:
     """
     This function normalized a sparse matrix. The normalization is
     done by row.
@@ -57,12 +52,7 @@ def normalize_sparse_matrix(
     )
 
     # change return type
-    if return_type == "lil":
-        sparse_matrix = sparse_matrix_coo.tolil()
-    elif return_type == "coo":
-        pass
-    else:
-        raise ValueError("Invalid return type value")
+    sparse_matrix = sparse_matrix_coo.tolil()
 
     return sparse_matrix
 

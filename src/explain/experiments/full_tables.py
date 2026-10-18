@@ -4,7 +4,7 @@ This module contains the code for the experiment of full reconstruction.
 
 # Standard libraries
 import os
-from typing import cast
+from typing import Any
 
 # 3pps
 import matplotlib.pyplot as plt
@@ -12,16 +12,28 @@ import matplotlib.ticker as mtick
 import numpy as np
 import pandas as pd
 import torch
-from torch_geometric.data import Data
 from tqdm.auto import tqdm
 
 # Own modules
+from src.explain.constants import (
+    CHECKPOINTS_PATH, CHECKPOINTS_PATH,
+    DROPOUT_RATES,
+    METHODS,
+    NUM_CLUSTERS,
+    LIMITS,
+    METHODS,
+    NUM_CLUSTERS,
+    XAIType,
+)
 from src.explain.executions import compute_xai
 from src.explain.methods import Explainer
-from src.explain.utils import CHECKPOINTS_PATH, METHODS, NUM_CLUSTERS, load_artifacts
+from src.explain.utils import load_artifacts
 from src.utils import (
     DATASETS_NAME,
     MODEL_NAMES,
+    Data,
+    DatasetName,
+    ModelName,
     set_torch_config,
 )
 
@@ -45,8 +57,13 @@ def main() -> None:
     print(f"device: {device}")
 
     # Define progress bar
-    progress_bar = tqdm(
-        range(len(DATASETS_NAME) * len(MODEL_NAMES) * len(METHODS) * len(NUM_CLUSTERS))
+    progress_bar: tqdm = tqdm(
+        range(
+            len(DATASETS_NAME)
+            * len(MODEL_NAMES)
+            * len(METHODS)
+            * (1 + len(NUM_CLUSTERS) + 1)
+        )
     )
 
     # Iter over dataset and model
@@ -77,62 +94,55 @@ def main() -> None:
                 if not os.path.isdir(checkpoints_folder_path):
                     # Create dirs
                     os.makedirs(checkpoints_folder_path)
-
-                # Iterate over cluster size
+                
+                # Get original XAI 
+                add_results(
+                    results,
+                    "original",
+                    explainer,
+                    data,
+                    dataset_name,
+                    model_name,
+                    None,
+                    checkpoints_folder_path,
+                    device,
+                    progress_bar,
+                )
+                
+                # Iterate over cluster size for cluster XAI
                 for num_clusters in NUM_CLUSTERS:
-                    # Go to next iteration
-                    if (
-                        dataset_name == "PubMed"
-                        and model_name == "gcn"
-                        and num_clusters > 32
-                    ) or (
-                        dataset_name == "PubMed"
-                        and model_name == "gat"
-                        and num_clusters > 16
-                    ):
-                        progress_bar.update()
-                        continue
-
-                    # Compute XAI
-                    _, num_extended_nodes, num_extended_edges, exec_time = compute_xai(
-                        explainer,
+                    add_results(
+                        results,
                         "cluster",
-                        num_clusters,
-                        0.0,
+                        explainer,
                         data,
+                        dataset_name,
+                        model_name,
+                        num_clusters,
                         checkpoints_folder_path,
                         device,
+                        progress_bar,
                     )
-
-                    # Append results
-                    x: torch.Tensor = cast(torch.Tensor, data.x)
-                    edge_index: torch.Tensor = cast(torch.Tensor, data.edge_index)
-                    increment_nodes: int = num_extended_nodes - x.shape[0]
-                    increment_nodes_percentage: float = (
-                        100 * increment_nodes / x.shape[0]
-                    )
-                    increment_edges: int = num_extended_edges - edge_index.shape[1]
-                    increment_edges_percentage: float = (
-                        100 * increment_edges / edge_index.shape[1]
-                    )
-                    results.append(
-                        [
-                            num_clusters,
-                            exec_time,
-                            increment_nodes,
-                            increment_nodes_percentage,
-                            increment_edges,
-                            increment_edges_percentage,
-                        ]
-                    )
-
-                    # Update progress bar
-                    progress_bar.update()
+                
+                # Get results with as many clusters as nodes
+                add_results(
+                    results,
+                    "cluster",
+                    explainer,
+                    data,
+                    dataset_name,
+                    model_name,
+                    data.x.shape[0],
+                    checkpoints_folder_path,
+                    device,
+                    progress_bar,
+                )
 
                 # Build dataframe
                 df = pd.DataFrame(
                     data=results,
                     columns=[
+                        "XAI Type",
                         "Number of Clusters",
                         "Execution time (s)",
                         "Increment in Number of Nodes",
@@ -156,9 +166,12 @@ def main() -> None:
                 # Save latex
                 df[
                     [
+                        "XAI Type",
                         "Number of Clusters",
                         "Execution time (s)",
+                        "Increment in Number of Nodes",
                         "Increment in Number of Nodes (%)",
+                        "Increment in Number of Edges",
                         "Increment in Number of Edges (%)",
                     ]
                 ].to_latex(
@@ -180,13 +193,92 @@ def main() -> None:
 
             # Draw figures
             draw_figures(
-                global_results_array,
+                global_results_array[:, 1:, :],
                 list(df.columns),
                 list(METHODS.keys()),
                 f"{RESULTS_PATH}/charts",
                 f"{dataset_name}_{model_name}",
             )
 
+    return None
+
+
+def add_results(
+    results: list[list[Any]],
+    xai_type: XAIType,
+    explainer: Explainer,
+    data: Data,
+    dataset_name: DatasetName,
+    model_name: ModelName,
+    num_clusters: int | None,
+    checkpoints_folder_path: str,
+    device: torch.device,
+    progress_bar: tqdm,
+) -> None:
+    """
+    This function adds the results to the list for an specific case.
+
+    Args:
+        results: List where results will be added.
+        xai_type: Type of explainability.
+        explainer: Explainer to use.
+        data: Data containing all the dataset.
+        dataset_name: Name of the dataset.
+        model_name: Name of the model.
+        num_clusters: Number of clusters.
+        checkpoints_folder_path: Folder to save checkpoints.
+        device: Device to use for tensor operations.
+        progress_bar: Progress bar.
+
+    Returns:
+        None.
+    """
+    
+    # Go to next iteration if it exceeds computational resources
+    if num_clusters is not None:
+        if (dataset_name, model_name) in LIMITS.keys():
+            if num_clusters > LIMITS[(dataset_name, model_name)]:
+                return None
+
+    # Compute XAI
+    _, num_extended_nodes, num_extended_edges, exec_time = (
+        compute_xai(
+            explainer,
+            xai_type,
+            num_clusters,
+            0.0,
+            data,
+            checkpoints_folder_path,
+            device,
+        )
+    )
+
+    # Append results
+    x: torch.Tensor = data.x
+    edge_index: torch.Tensor = data.edge_index
+    increment_nodes: int = num_extended_nodes - x.shape[0]
+    increment_nodes_percentage: float = (
+        100 * increment_nodes / x.shape[0]
+    )
+    increment_edges: int = num_extended_edges - edge_index.shape[1]
+    increment_edges_percentage: float = (
+        100 * increment_edges / edge_index.shape[1]
+    )
+    results.append(
+        [
+            xai_type,
+            num_clusters,
+            exec_time,
+            increment_nodes,
+            increment_nodes_percentage,
+            increment_edges,
+            increment_edges_percentage,
+        ]
+    )
+
+    # Update progress bar
+    progress_bar.update()
+    
     return None
 
 
@@ -213,12 +305,15 @@ def draw_figures(
         None.
     """
 
+    # Get global result
+    global_results = global_results[:, :, 1:].astype(np.float64)
+
     # Prepare for figure
-    x_label: str = columns[0]
-    y_label: str = columns[1]
+    x_label: str = "Number of Clusters"
+    y_label: str = "Execution time (s)"
     x_data: np.ndarray = global_results[0, :, columns.index(x_label)]
     y_data: np.ndarray = np.transpose(global_results[:, :, columns.index(y_label)])
-    max_x: float = 1.1 * global_results[:, :, columns.index(x_label)].max()
+    max_x: float = 1.1 * global_results[:, :, columns.index(x_label)].max().item()
     max_y: float = 1.1 * y_data.max()
 
     # Create figure
@@ -239,7 +334,7 @@ def draw_figures(
     plt.close()
 
     # Prepare for figure
-    y_label = columns[3]
+    y_label = "Increment in Number of Nodes (%)"
     y_data = np.transpose(global_results[:, :, columns.index(y_label)])
     max_y = 1.1 * y_data.max()
 

@@ -1,12 +1,13 @@
-# ai learning libraries
+"""
+This module contains the code to create clusters.
+"""
+
 # 3pps
 import torch
-from torch_geometric.data import Data
 from torch_geometric.loader import ClusterData
 
 # Own modules
-# own modules
-from src.explain.utils import k_hop_subgraph, subgraph
+from src.explain.utils import Data, k_hop_subgraph, subgraph
 
 
 def get_extended_data(
@@ -24,6 +25,8 @@ def get_extended_data(
     Args:
         data: initial data object. Mandatory attributes: [node_ids, x,
             edge_index].
+        xai_type: Explainability type.
+        num_clusters: Number of clusters to use to get extended data.
         num_hops: number of hops for the reconstruction.
         dropout_rate: rate for the dropout.
         device: device for the tensor objects.
@@ -37,7 +40,13 @@ def get_extended_data(
     cluster_data: ClusterData = ClusterData(data, num_parts=num_clusters, log=False)
 
     # Load extended batches
-    for cluster_id, _ in enumerate(cluster_data):
+    data_extended_node_ids: list[torch.Tensor] = []
+    data_extended_x: list[torch.Tensor] = []
+    data_extended_edge_index: list[torch.Tensor] = []
+    data_extended_batch_indexes: list[torch.Tensor] = []
+    data_extended_cluster_ids: list[torch.Tensor] = []
+    offset: int = 0
+    for cluster_id in range(len((cluster_data))):
         # Extract data
         cluster = cluster_data[cluster_id]
 
@@ -70,26 +79,49 @@ def get_extended_data(
         batch_indexes[original_node_ids_mask] = torch.arange(len(cluster.node_ids)).to(
             device
         )
-
-        # Concat data objects
-        if cluster_id == 0:
-            data_extended: Data = Data(
-                node_ids=re_ids,
-                x=data.x[re_ids, :],
-                edge_index=re_edge_index_relabelled,
-                batch_indexes=batch_indexes,
-                cluster_ids=cluster_id * torch.ones_like(batch_indexes),
-            )
-
-        else:
-            data_extended = data_extended.concat(
-                Data(
-                    node_ids=re_ids,
-                    x=data.x[re_ids, :],
-                    edge_index=re_edge_index_relabelled + data_extended.x.shape[0],
-                    batch_indexes=batch_indexes,
-                    cluster_ids=cluster_id * torch.ones_like(batch_indexes),
-                )
-            )
+        
+        # Add to the list
+        data_extended_node_ids.append(re_ids)
+        data_extended_x.append(data.x[re_ids, :])
+        data_extended_edge_index.append(re_edge_index_relabelled + offset)
+        data_extended_batch_indexes.append(batch_indexes)
+        data_extended_cluster_ids.append(cluster_id * torch.ones_like(batch_indexes))
+        offset += re_ids.shape[0]
+    
+    # Build data extended
+    data_extended: Data = Data(
+        node_ids=torch.concat(data_extended_node_ids, dim=0),
+        x=torch.concat(data_extended_x, dim=0),
+        edge_index=torch.concat(data_extended_edge_index, dim=1),
+        batch_indexes=torch.concat(data_extended_batch_indexes, dim=0),
+        cluster_ids=torch.concat(data_extended_cluster_ids, dim=0),
+    )
 
     return data_extended
+
+
+def k_hop_data(data: Data) -> list[Data]:
+    """
+    This function creates right data format for k_hop parallel
+    execution.
+
+    Args:
+        data: Data object with all the data of the dataset.
+
+    Returns:
+        List of Data objects. Only one node in each object.
+    """
+
+    # Init data list
+    data_list: list[Data] = []
+
+    # Iter over
+    for node_id in data.node_ids:
+        data_list.append(
+            Data(
+                x=data.x[node_id, :].view(1, -1),
+                node_ids=torch.tensor([node_id]).to(data.x.device),
+            )
+        )
+
+    return data_list

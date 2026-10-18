@@ -3,48 +3,17 @@ This module contains auxiliary functionality for the explain module.
 """
 
 # Standard libraries
-from typing import Literal, Optional, Type, TypeAlias
+from typing import Literal, Optional, cast
 
 # 3pps
 import torch
-from torch_geometric.data import Data, InMemoryDataset
+from torch_geometric.data import InMemoryDataset
 from torch_geometric.utils.map import map_index
 from torch_geometric.utils.mask import index_to_mask
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 
 # Own modules
-from src.explain.methods import (
-    DeConvNet,
-    Explainer,
-    GNNExplainer,
-    GradCAM,
-    GuidedBackprop,
-    SaliencyMap,
-)
-from src.utils import DATA_PATH, LOAD_PATH, load_data
-
-# Define types
-MethodName: TypeAlias = Literal[
-    "DeConvNet",
-    "GNNExplainer",
-    "GradCAM",
-    "GuidedBackprop",
-    "SaliencyMap",
-]
-XAIType: TypeAlias = Literal["original", "k_hop", "cluster"]
-
-# Static variables
-METHODS: dict[MethodName, Type[Explainer]] = {
-    # "DeConvNet": DeConvNet,
-    # "GNNExplainer": GNNExplainer,
-    "GradCAM": GradCAM,
-    # "GuidedBackprop": GuidedBackprop,
-    # "SaliencyMap": SaliencyMap,
-}
-NUM_CLUSTERS: tuple[int, ...] = (1, 8, 16, 32, 64, 128)
-DROPOUT_RATES: tuple[float, ...] = (0.0, 0.2, 0.5, 0.7, 1.0)
-ITERATIONS: int = 3
-CHECKPOINTS_PATH: str = "checkpoints"
+from src.utils import DATA_PATH, LOAD_PATH, Data, load_data
 
 
 def k_hop_subgraph(
@@ -185,7 +154,6 @@ def subgraph(
 
     edge_mask = node_mask[edge_index[0]] & node_mask[edge_index[1]]
     edge_index = edge_index[:, edge_mask]
-    edge_attr = edge_attr[edge_mask] if edge_attr is not None else None
 
     new_edge_index, _ = map_index(
         edge_index.view(-1),
@@ -218,10 +186,11 @@ def load_artifacts(
 
     # Get dataset and device
     dataset: InMemoryDataset = load_data(dataset_name, f"{DATA_PATH}/{dataset_name}")
+    data: Data = cast(Data, dataset[0])
 
     # Pass elements to correct device and build data object
-    x: torch.Tensor = dataset[0].x.float()
-    edge_index: torch.Tensor = dataset[0].edge_index.long()
+    x: torch.Tensor = data.x.float()
+    edge_index: torch.Tensor = data.edge_index.long()
     node_ids: torch.Tensor = torch.arange(x.shape[0])
     data: Data = Data(x=x, edge_index=edge_index, node_ids=node_ids)
 

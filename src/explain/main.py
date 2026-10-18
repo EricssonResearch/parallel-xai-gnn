@@ -12,7 +12,7 @@ from src.explain.experiments import drop_tables, examples, full_tables
 
 def main() -> None:
     """
-    This is the main function that executes teh experiment that you
+    This is the main function that executes the experiment that you
     define with the experiment_name variable.
 
     Returns:

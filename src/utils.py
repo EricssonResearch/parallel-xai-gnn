@@ -32,6 +32,21 @@ MODEL_NAMES: tuple[ModelName, ...] = (
 )
 
 
+class Data(torch_geometric.data.Data):
+    """
+    This class is a typed version of the Data object from PyTorch
+    Geometric.
+    """
+
+    # Set attributes
+    x: torch.Tensor
+    edge_index: torch.Tensor
+    y: torch.Tensor
+    train_mask: torch.Tensor
+    val_mask: torch.Tensor
+    test_mask: torch.Tensor
+
+
 def get_device() -> torch.device:
     """
     This function gets the device for PyTorch.
@@ -95,10 +110,13 @@ def set_torch_config() -> torch.device:
 
 def set_seed(seed: int) -> None:
     """
-    This function sets a seed and ensure a deterministic behavior
+    This function sets a seed and ensure a deterministic behavior.
 
     Args:
-        seed: seed to start all random operations.
+        seed: Seed to start all random operations.
+
+    Returns:
+        None.
     """
 
     # set seed in numpy and random

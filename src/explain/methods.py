@@ -5,7 +5,7 @@ This module contains the code for the explainability methods.
 # Standard libraries
 import copy
 from abc import ABC, abstractmethod
-from typing import Callable, override, cast
+from typing import Callable, cast, override
 
 # 3pps
 import torch
@@ -26,7 +26,7 @@ class Explainer(ABC):
 
     def __init__(self, model: torch.nn.Module) -> None:
         """
-        Constructor for Explainer class
+        This method is the constructor of the class.
 
         Args:
             model: Model to make predictions.
@@ -67,7 +67,8 @@ class Explainer(ABC):
 
 class GradientExplainer(Explainer):
     """
-    This class
+    This class defines a base class for all the gradient-based
+    explainers.
 
     Attributes:
         model: Model to make predictions.
@@ -181,7 +182,9 @@ class DeConvNet(GradientExplainer):
 
         # Define backward hook
         def backward_hook_fn(
-            module: torch.nn.Module, grad_in: torch.Tensor, grad_out: torch.Tensor
+            module: torch.nn.Module,
+            grad_in: torch.Tensor | tuple[torch.Tensor, ...],
+            grad_out: torch.Tensor | tuple[torch.Tensor, ...],
         ) -> tuple[torch.Tensor]:
             """
             Backward hook to modify gradient.
@@ -257,28 +260,32 @@ class GuidedBackprop(GradientExplainer):
 
         # Define forward hook
         def forward_hook_fn(
-            module: torch.nn.Module, inputs: torch.Tensor, outputs: torch.Tensor
+            module: torch.nn.Module,
+            inputs: torch.Tensor | tuple[torch.Tensor, ...],
+            outputs: torch.Tensor | tuple[torch.Tensor, ...],
         ) -> None:
             """
             This function is the forward hook.
 
             Args:
                 module: Module of pytorch.
-                input: Inputs to the layer.
-                output: Outputs to the layer.
+                inputs: Inputs to the layer.
+                outputs: Outputs to the layer.
 
             Returns:
                 None.
             """
 
             # Save activation maps
-            self.activation_maps.append(outputs)
+            self.activation_maps.append(cast(torch.Tensor, outputs))
 
             return None
 
         # Define backward hook
         def backward_hook_fn(
-            module: torch.nn.Module, grad_in: torch.Tensor, grad_out: torch.Tensor
+            module: torch.nn.Module,
+            grad_in: torch.Tensor | tuple[torch.Tensor, ...],
+            grad_out: torch.Tensor | tuple[torch.Tensor, ...],
         ) -> tuple[torch.Tensor]:
             """
             This function is the backward hook.
@@ -379,7 +386,7 @@ class SmoothGrad(GradientExplainer):
 
         return None
 
-    # Overriding
+    @override
     @torch.no_grad()
     def explain(
         self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: torch.Tensor
@@ -423,61 +430,36 @@ class SmoothGrad(GradientExplainer):
         return feature_maps
 
 
-class GradCAM(GradientExplainer):
+class IntegratedGradients(GradientExplainer):
     """
-    This class implements the GradCAM layer for node classification.
+    This class implements the IntegratedGradients method from the
+    `https://arxiv.org/pdf/1703.01365` paper.
     """
 
-    @torch.enable_grad()
-    def _compute_alphas(
-        self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    # Define attributes
+    model: torch.nn.Module
+    steps: int
+
+    def __init__(self, model: torch.nn.Module, steps: int = 50) -> None:
         """
-        This method computes the gradients of the outputs with respect
-        to the input.
+        This method is the constructor of the class.
 
         Args:
-            x: Node tensor. Dimensions: [number of nodes,
-                number of node features].
-            edge_index: Edge index tensor. Dimensions: [2,
-                number of edges].
-            node_ids: Node ids tensor. Dimensions: [number of ids to
-                explain].
-
-        Raises:
-            RuntimeError: Error in gradient computation.
+            model: Model to make predictions.
+            steps: Steps to compute Riemman approximation. Defaults to
+                50.
 
         Returns:
-            Alphas tensor. Dimensions: [number of nodes, 1].
-            Embeddings tensor (after computing all GNN layers).
-                Dimensions: [number of nodes, hidden dim].
+            None.
         """
 
-        # Get parts of the model
-        gnn_backbone: torch.nn.Module = cast(torch.nn.Module, self.model.gnn_backbone)
-        mlp: torch.nn.Module = cast(torch.nn.Module, self.model.mlp)
+        # Call super class constructor
+        super().__init__(model)
 
-        # Make GNN predictions
-        with torch.no_grad():
-            embeddings: torch.Tensor = gnn_backbone(x, edge_index)
+        # Set attributes
+        self.steps = steps
 
-        # Compute final outputs
-        embeddings.requires_grad_(True)
-        outputs = mlp(embeddings)
-        max_scores = torch.amax(outputs, dim=1)
-
-        # Backward pass
-        max_scores[node_ids].sum().backward()
-
-        # Raise exception if there is no grad
-        if embeddings.grad is None:
-            raise RuntimeError("Error in gradient computation")
-
-        # Compute alphas
-        gradients = embeddings.grad.clone()
-        alphas: torch.Tensor = gradients.sum(dim=1, keepdim=True)
-
-        return alphas, embeddings
+        return None
 
     @override
     @torch.no_grad()
@@ -498,14 +480,20 @@ class GradCAM(GradientExplainer):
                 [number of nodes].
         """
 
-        # Get alphas and embeddings
-        alphas: torch.Tensor
-        embeddings: torch.Tensor
-        alphas, embeddings = self._compute_alphas(x, edge_index, node_ids)
+        # Init baseline and grads
+        baseline: torch.Tensor = torch.zeros_like(x)
+        grads: torch.Tensor = torch.zeros_like(x)
 
-        # Get feature maps and interpolate to have original size
-        feature_maps: torch.Tensor = alphas * embeddings
-        feature_maps = feature_maps.mean(dim=1)
+        # Compute gradients for each noise batch
+        for i in range(self.steps):
+            # Pass the noise batch through the model
+            grads += self._compute_gradients(
+                baseline + i / self.steps * (x - baseline), edge_index, node_ids
+            )
+
+        # Init feature maps
+        feature_maps: torch.Tensor = (x - baseline) * grads / self.steps
+        feature_maps = torch.mean(torch.abs(feature_maps), dim=1)
 
         return feature_maps
 
@@ -547,7 +535,7 @@ class GNNExplainer(Explainer):
 
         return None
 
-    # Overriding method
+    @override
     @torch.enable_grad()
     def explain(
         self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: torch.Tensor
@@ -557,6 +545,72 @@ class GNNExplainer(Explainer):
         function sets the seed before computing the explanation so it
         is deterministic. Otherwise, explanation will be different each
         time this explained is executed.
+
+        Args:
+            x: Node matrix. Dimensions: [number of nodes, number of
+                node features].
+            edge_index: Edge index. Dimensions: [2, number of edges].
+            node_ids: Node ids. Dimensions: [number of node ids].
+
+        Returns:
+            Feature explainability maps unnormalized. Dimensions:
+                [number of nodes].
+        """
+
+        # Compute feature maps
+        explanation = self.explainer(x, edge_index, index=node_ids)
+        feature_maps = explanation.node_mask[:, 0]
+
+        return feature_maps
+
+
+class GraphMaskExplainer(Explainer):
+    """
+    This class implements the GNNExplainer.
+
+    Attributes:
+        explainer: Pytorch geometric explainer.
+    """
+
+    # Define attributes
+    explainer: torch_geometric.explain.Explainer
+
+    def __init__(self, model: torch.nn.Module) -> None:
+        """
+        This method is the constructor for the class.
+
+        Args:
+            model: Model to make predictions.
+
+        Returns:
+            None.
+        """
+
+        # Call super class constructor
+        super().__init__(model)
+
+        # Define explainer and targets
+        self.explainer = torch_geometric.explain.Explainer(
+            self.model,
+            torch_geometric.explain.algorithm.GraphMaskExplainer(2, log=False),
+            explanation_type="model",
+            node_mask_type="object",
+            model_config={
+                "mode": "multiclass_classification",
+                "task_level": "node",
+                "return_type": "raw",
+            },
+        )
+
+        return None
+
+    @override
+    @torch.enable_grad()
+    def explain(
+        self, x: torch.Tensor, edge_index: torch.Tensor, node_ids: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        This method computes the explainability of node matrix.
 
         Args:
             x: Node matrix. Dimensions: [number of nodes, number of

@@ -42,36 +42,30 @@ class GCN(torch.nn.Module):
         super().__init__()
 
         # Define layers
-        self.gnn_backbone = torch_geometric.nn.Sequential(
+        self.gnns = torch_geometric.nn.Sequential(
             "x, edge_index",
             [
                 (
-                    torch_geometric.nn.GCNConv(input_dim, hidden_dim),
+                    torch_geometric.nn.GCNConv(input_dim, hidden_dim, normalize=False),
                     "x, edge_index -> x",
                 ),
                 torch.nn.ReLU(),
                 torch.nn.Dropout(drop_rate),
                 (
-                    torch_geometric.nn.GCNConv(hidden_dim, hidden_dim),
+                    torch_geometric.nn.GCNConv(hidden_dim, output_dim, normalize=False),
                     "x, edge_index -> x",
                 ),
             ],
         )
-        self.mlp = torch.nn.Sequential(
-            torch.nn.Linear(hidden_dim, hidden_dim),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(drop_rate),
-            torch.nn.Linear(hidden_dim, output_dim),
-        )
 
         return None
 
-    def forward(self, inputs: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """
         This method defines the forward pass.
 
         Args:
-            inputs: Node matrix. Dimensions: [batch size, input size].
+            x: Node matrix. Dimensions: [batch size, input size].
             edge_index: Edge index tensor that represents the adj
                 matrix. Dimensions: [2, number of edges].
 
@@ -81,8 +75,7 @@ class GCN(torch.nn.Module):
         """
 
         # Compute outputs
-        outputs: torch.Tensor = self.gnn_backbone(inputs, edge_index)
-        outputs = self.mlp(outputs)
+        outputs: torch.Tensor = self.gnns(x, edge_index)
 
         return outputs
 
@@ -126,7 +119,7 @@ class GAT(torch.nn.Module):
         super().__init__()
 
         # Define layers
-        self.gnn_backbone = torch_geometric.nn.Sequential(
+        self.gnns = torch_geometric.nn.Sequential(
             "x, edge_index",
             [
                 (
@@ -136,24 +129,20 @@ class GAT(torch.nn.Module):
                 torch.nn.ReLU(),
                 torch.nn.Dropout(drop_rate),
                 (
-                    torch_geometric.nn.GATv2Conv(hidden_dim, hidden_dim),
+                    torch_geometric.nn.GATv2Conv(hidden_dim, output_dim),
                     "x, edge_index -> x",
                 ),
             ],
         )
-        self.mlp = torch.nn.Sequential(
-            torch.nn.Linear(hidden_dim, hidden_dim),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(drop_rate),
-            torch.nn.Linear(hidden_dim, output_dim),
-        )
 
-    def forward(self, inputs: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        return None
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """
         This method defines the forward pass.
 
         Args:
-            inputs: Node matrix. Dimensions: [batch size, input size].
+            x: Node matrix. Dimensions: [batch size, input size].
             edge_index: Edge index tensor that represents the adj
                 matrix. Dimensions: [2, number of edges].
 
@@ -163,7 +152,6 @@ class GAT(torch.nn.Module):
         """
 
         # Compute outputs
-        outputs: torch.Tensor = self.gnn_backbone(inputs, edge_index)
-        outputs = self.mlp(outputs)
+        outputs: torch.Tensor = self.gnns(x, edge_index)
 
         return outputs
