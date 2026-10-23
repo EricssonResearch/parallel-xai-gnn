@@ -1,5 +1,22 @@
 # Declare all phony targets
-.PHONY: ruff ty isort uv_sort check
+.PHONY: new attach ruff ty isort uv_sort check
+
+# Allow `make new <session>` / `make attach <session>`: take the 2nd word as the
+# session name and turn it into a no-op target so make doesn't try to build it.
+# `make new name=<session>` still works too.
+ifneq ($(filter $(firstword $(MAKECMDGOALS)),new attach),)
+  name ?= $(word 2,$(MAKECMDGOALS))
+  ifneq ($(name),)
+    $(eval $(name):;@:)
+  endif
+endif
+
+new:
+	@tmux new-session -s $(name)
+
+attach:
+	@test -n "$(name)" || (echo "Usage: make attach <session>"; exit 1)
+	@tmux attach -t $(name)
 
 format:
 	@echo "Formatting code..."
