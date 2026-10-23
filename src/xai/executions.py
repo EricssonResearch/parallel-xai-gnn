@@ -12,11 +12,11 @@ import torch
 from scipy.sparse import lil_matrix
 
 # Own modules
-from src.explain.cluster import get_extended_data
-from src.explain.constants import ITERATIONS, XAIType
-from src.explain.methods import Explainer
-from src.explain.sparse import normalize_sparse_matrix
-from src.explain.utils import Data
+from src.xai.cluster import get_extended_data
+from src.xai.constants import ITERATIONS, XAIType
+from src.xai.methods import Explainer
+from src.xai.sparse import normalize_sparse_matrix
+from src.xai.utils import Data
 
 
 @torch.no_grad()
@@ -24,7 +24,7 @@ def compute_xai(
     explainer: Explainer,
     xai_type: XAIType,
     num_clusters: int | None,
-    dropout_rate: float | None,
+    rate: float | None,
     data: Data,
     checkpoints_folder_path: str,
     device: torch.device,
@@ -38,7 +38,7 @@ def compute_xai(
         xai_type: Type of XAI execution. Possible values:
             [original, k_hop, cluster].
         num_clusters: Number of clusters.
-        dropout_rate: Dropout rate.
+        rate: Reconstruction rate.
         data: Data object.
         checkpoints_folder_path: Path to the folder where checkpoints
             are saved.
@@ -54,7 +54,7 @@ def compute_xai(
         checkpoint_path = f"{checkpoints_folder_path}/{xai_type}.pkl"
     elif xai_type == "cluster":
         checkpoint_path = (
-            f"{checkpoints_folder_path}/{xai_type}_{num_clusters}_{dropout_rate}.pkl"
+            f"{checkpoints_folder_path}/{xai_type}_{num_clusters}_{rate}.pkl"
         )
 
     # Check if checkpoint already exists
@@ -75,14 +75,14 @@ def compute_xai(
                 num_extended_edges = data.edge_index.shape[1]
 
             else:
-                # Raise error if clusters or drop rate are not 
+                # Raise error if clusters or drop rate are not
                 # initialized
-                if (num_clusters is None) or (dropout_rate is None):
+                if (num_clusters is None) or (rate is None):
                     raise ValueError(
                         "'num_cluster' and 'dropout_rate' arguments must be "
                         "initialized for 'cluster' explainability"
                     )
-                
+
                 # Get feature maps
                 (
                     feature_maps,
@@ -92,7 +92,7 @@ def compute_xai(
                     explainer,
                     data,
                     num_clusters,
-                    dropout_rate,
+                    rate,
                     device=device,
                 )
 
@@ -174,7 +174,7 @@ def parallel_xai(
     explainer: Explainer,
     data: Data,
     num_clusters: int,
-    dropout_rate: float,
+    rate: float,
     num_hops: int = 2,
     device: torch.device = torch.device("cpu"),
 ) -> tuple[lil_matrix, int, int]:
@@ -185,7 +185,7 @@ def parallel_xai(
         explainer: explainer to use.
         data: data object. Attributes: [node_ids, x, edge_index].
         num_clusters: number of clusters.
-        dropout_rate: rate for the dropout in the reconstruction.
+        rate: Reconstruction rate.
         num_hops: number of hops of GNN model. Defaults to 3.
         device: device for the tensors. Defaults to cpu.
 
@@ -195,7 +195,7 @@ def parallel_xai(
         Number of nodes in extended matrix.
         Number of edges in extended matrix.
     """
-        
+
     # create feature maps
     num_nodes: int = data.x.shape[0]
     global_feature_maps: lil_matrix = lil_matrix((num_nodes, num_nodes))
@@ -204,9 +204,7 @@ def parallel_xai(
     data = data.to(device)
 
     # compute extended data
-    data_extended: Data = get_extended_data(
-        data, num_clusters, num_hops, dropout_rate, device
-    )
+    data_extended: Data = get_extended_data(data, num_clusters, num_hops, rate, device)
 
     # pass data to the right device
     data.edge_index = data.edge_index.long()
@@ -302,4 +300,3 @@ def get_k_hop_batches_node_ids(
         batches_ids.append(batch_node_ids)
 
     return batches_ids
-

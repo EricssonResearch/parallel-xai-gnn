@@ -12,14 +12,14 @@ import networkx as nx
 import numpy as np
 import torch
 import torch_geometric
-from torch_geometric.data import Data, InMemoryDataset
+from torch_geometric.data import InMemoryDataset
 from torch_geometric.utils import k_hop_subgraph
 
 # Own modules
-from src.explain.cluster import get_extended_data
-from src.explain.methods import Explainer, GNNExplainer, SaliencyMap
-from src.explain.utils import subgraph
-from src.utils import load_data, set_seed
+from src.utils import Data, load_data, set_seed
+from src.xai.cluster import get_extended_data
+from src.xai.methods import Explainer, GNNExplainer, SaliencyMap
+from src.xai.utils import subgraph
 
 # Static variables
 DATA_PATH: str = "data"
@@ -57,9 +57,9 @@ def main() -> None:
 
     # Pass elements to correct device
     data = cast(Data, dataset[0])
-    x: torch.Tensor = cast(torch.Tensor, data.x)
+    x: torch.Tensor = data.x
     x = x.float().to(device)
-    edge_index: torch.Tensor = cast(torch.Tensor, data.edge_index)
+    edge_index: torch.Tensor = data.edge_index
     edge_index = edge_index.long().to(device)
 
     # Get small example
@@ -526,12 +526,10 @@ def get_updated_data(data_extended: Data) -> Data:
     )
 
     # Update edge index
-    _, data_extended.edge_index = subgraph(
-        update_node_ids, cast(torch.Tensor, data_extended.edge_index)
-    )
+    _, data_extended.edge_index = subgraph(update_node_ids, data_extended.edge_index)
 
     # Update x, cluster_ids and batch_indexes
-    data_extended.x = cast(torch.Tensor, data_extended.x)[update_node_ids]
+    data_extended.x = data_extended.x[update_node_ids]
     data_extended.cluster_ids = data_extended.cluster_ids[update_node_ids]
     data_extended.batch_indexes = data_extended.batch_indexes[update_node_ids]
     data_extended.node_ids = data_extended.node_ids[update_node_ids]

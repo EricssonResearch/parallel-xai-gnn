@@ -41,10 +41,7 @@ class Data(torch_geometric.data.Data):
     # Set attributes
     x: torch.Tensor
     edge_index: torch.Tensor
-    y: torch.Tensor
-    train_mask: torch.Tensor
-    val_mask: torch.Tensor
-    test_mask: torch.Tensor
+    node_ids: torch.Tensor
 
 
 def get_device() -> torch.device:

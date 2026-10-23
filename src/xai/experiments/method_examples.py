@@ -14,8 +14,8 @@ import torch_geometric
 from torch_geometric.data import Data, InMemoryDataset
 
 # Own modules
-from src.explain.methods import Explainer, GNNExplainer, SaliencyMap
 from src.utils import load_data, set_seed
+from src.xai.methods import Explainer, GNNExplainer, SaliencyMap
 
 # Static variables
 DATA_PATH: str = "data"

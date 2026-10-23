@@ -98,3 +98,6 @@ local-folder = "Own modules"
 
 [tool.ty.rules]
 possibly-missing-submodule = "ignore"
+
+[tool.ty.src]
+exclude = ["src/xai/gnn_explainer.py",]

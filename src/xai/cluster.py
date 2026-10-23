@@ -7,14 +7,14 @@ import torch
 from torch_geometric.loader import ClusterData
 
 # Own modules
-from src.explain.utils import Data, k_hop_subgraph, subgraph
+from src.xai.utils import Data, k_hop_subgraph, subgraph
 
 
 def get_extended_data(
     data: Data,
     num_clusters: int,
     num_hops: int,
-    dropout_rate: float,
+    rate: float,
     device: torch.device,
 ) -> Data:
     """
@@ -28,7 +28,7 @@ def get_extended_data(
         xai_type: Explainability type.
         num_clusters: Number of clusters to use to get extended data.
         num_hops: number of hops for the reconstruction.
-        dropout_rate: rate for the dropout.
+        rate: Reconstruction rate for the dropout.
         device: device for the tensor objects.
 
     Returns:
@@ -56,11 +56,12 @@ def get_extended_data(
         )
 
         # Reduce reconstruction if dropout rate is higher than 1
-        if dropout_rate > 0.0:
+        if rate < 1.0:
             # Compute clone node ids
             cloned_node_ids_mask: torch.Tensor = ~torch.isin(re_ids, cluster.node_ids)
 
             # Define mask
+            dropout_rate: float = 1 - rate
             dropout_mask: torch.Tensor = torch.rand(
                 int(cloned_node_ids_mask.sum().item()), device=device
             )
@@ -79,7 +80,7 @@ def get_extended_data(
         batch_indexes[original_node_ids_mask] = torch.arange(len(cluster.node_ids)).to(
             device
         )
-        
+
         # Add to the list
         data_extended_node_ids.append(re_ids)
         data_extended_x.append(data.x[re_ids, :])
@@ -87,7 +88,7 @@ def get_extended_data(
         data_extended_batch_indexes.append(batch_indexes)
         data_extended_cluster_ids.append(cluster_id * torch.ones_like(batch_indexes))
         offset += re_ids.shape[0]
-    
+
     # Build data extended
     data_extended: Data = Data(
         node_ids=torch.concat(data_extended_node_ids, dim=0),

@@ -13,7 +13,7 @@ import torch.nn.functional as F
 import torch_geometric
 
 # Own modules
-from src.explain.gnn_explainer import GNNExplainerAlgorithm
+from src.xai.gnn_explainer import GNNExplainerAlgorithm
 
 
 class Explainer(ABC):
@@ -353,13 +353,13 @@ class SaliencyMap(GradientExplainer):
 
 class SmoothGrad(GradientExplainer):
     """
-    This class creates smoothgrad saliency map visualizations.
+    This class creates SmoothGrad saliency map visualizations.
     This class inherits from SaliencyMap class.
 
     Attributes:
         model for classifying images
         threshold for masking part of saliency map
-        noise level for the creation of smoothgrad visualizations
+        noise level for the creation of SmoothGrad visualizations
         sample size for creation of noise duplicates
     """
 
@@ -371,7 +371,7 @@ class SmoothGrad(GradientExplainer):
 
         Args:
             model: Model for classifying images.
-            noise_level: Noise level for the creation of smoothgrad
+            noise_level: Noise level for the creation of SmoothGrad
                 visualizations. Defaults to 0.2.
             sample_size: Sample size for creation of noise duplicates.
                 Defaults to 50.
@@ -415,7 +415,7 @@ class SmoothGrad(GradientExplainer):
         noise = torch.normal(mean=0, std=std)
 
         # Compute gradients for each noise batch
-        for _ in range(x.shape[0]):
+        for _ in range(self.sample_size):
             # Clone batch
             x_batch: torch.Tensor = x + noise[torch.randperm(x.shape[0]), :]
 

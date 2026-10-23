@@ -15,27 +15,21 @@ import torch
 from tqdm.auto import tqdm
 
 # Own modules
-from src.explain.constants import (
-    CHECKPOINTS_PATH, CHECKPOINTS_PATH,
-    DROPOUT_RATES,
-    METHODS,
-    NUM_CLUSTERS,
-    LIMITS,
-    METHODS,
-    NUM_CLUSTERS,
-    XAIType,
-)
-from src.explain.executions import compute_xai
-from src.explain.methods import Explainer
-from src.explain.utils import load_artifacts
 from src.utils import (
     DATASETS_NAME,
     MODEL_NAMES,
     Data,
-    DatasetName,
-    ModelName,
     set_torch_config,
 )
+from src.xai.constants import (
+    CHECKPOINTS_PATH,
+    METHODS,
+    NUM_CLUSTERS,
+    XAIType,
+)
+from src.xai.executions import compute_xai
+from src.xai.methods import Explainer
+from src.xai.utils import load_artifacts
 
 # Static variables
 RESULTS_PATH: str = "results/full"
@@ -90,25 +84,23 @@ def main() -> None:
                     f"{CHECKPOINTS_PATH}/{dataset_name}/{model_name}/{method_name}"
                 )
 
-                # Create dir if it doesnt´t exist
+                # Create dir if it doesn't exist
                 if not os.path.isdir(checkpoints_folder_path):
                     # Create dirs
                     os.makedirs(checkpoints_folder_path)
-                
-                # Get original XAI 
+
+                # Get original XAI
                 add_results(
                     results,
                     "original",
                     explainer,
                     data,
-                    dataset_name,
-                    model_name,
                     None,
                     checkpoints_folder_path,
                     device,
                     progress_bar,
                 )
-                
+
                 # Iterate over cluster size for cluster XAI
                 for num_clusters in NUM_CLUSTERS:
                     add_results(
@@ -116,22 +108,18 @@ def main() -> None:
                         "cluster",
                         explainer,
                         data,
-                        dataset_name,
-                        model_name,
                         num_clusters,
                         checkpoints_folder_path,
                         device,
                         progress_bar,
                     )
-                
+
                 # Get results with as many clusters as nodes
                 add_results(
                     results,
                     "cluster",
                     explainer,
                     data,
-                    dataset_name,
-                    model_name,
                     data.x.shape[0],
                     checkpoints_folder_path,
                     device,
@@ -208,8 +196,6 @@ def add_results(
     xai_type: XAIType,
     explainer: Explainer,
     data: Data,
-    dataset_name: DatasetName,
-    model_name: ModelName,
     num_clusters: int | None,
     checkpoints_folder_path: str,
     device: torch.device,
@@ -233,37 +219,25 @@ def add_results(
     Returns:
         None.
     """
-    
-    # Go to next iteration if it exceeds computational resources
-    if num_clusters is not None:
-        if (dataset_name, model_name) in LIMITS.keys():
-            if num_clusters > LIMITS[(dataset_name, model_name)]:
-                return None
 
     # Compute XAI
-    _, num_extended_nodes, num_extended_edges, exec_time = (
-        compute_xai(
-            explainer,
-            xai_type,
-            num_clusters,
-            0.0,
-            data,
-            checkpoints_folder_path,
-            device,
-        )
+    _, num_extended_nodes, num_extended_edges, exec_time = compute_xai(
+        explainer,
+        xai_type,
+        num_clusters,
+        0.0,
+        data,
+        checkpoints_folder_path,
+        device,
     )
 
     # Append results
     x: torch.Tensor = data.x
     edge_index: torch.Tensor = data.edge_index
     increment_nodes: int = num_extended_nodes - x.shape[0]
-    increment_nodes_percentage: float = (
-        100 * increment_nodes / x.shape[0]
-    )
+    increment_nodes_percentage: float = 100 * increment_nodes / x.shape[0]
     increment_edges: int = num_extended_edges - edge_index.shape[1]
-    increment_edges_percentage: float = (
-        100 * increment_edges / edge_index.shape[1]
-    )
+    increment_edges_percentage: float = 100 * increment_edges / edge_index.shape[1]
     results.append(
         [
             xai_type,
@@ -278,7 +252,7 @@ def add_results(
 
     # Update progress bar
     progress_bar.update()
-    
+
     return None
 
 

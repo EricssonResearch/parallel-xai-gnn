@@ -13,7 +13,7 @@ from torch_geometric.utils.mask import index_to_mask
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 
 # Own modules
-from src.utils import DATA_PATH, LOAD_PATH, Data, load_data
+from src.utils import DATA_PATH, LOAD_PATH, Data, load_data, set_seed
 
 
 def k_hop_subgraph(
@@ -137,6 +137,9 @@ def subgraph(
                 True,  True,  True,  False, False]))
     """
 
+    if subset.shape[0] == 0:
+        return edge_index, edge_index
+
     # get device
     device = edge_index.device
 
@@ -186,13 +189,24 @@ def load_artifacts(
 
     # Get dataset and device
     dataset: InMemoryDataset = load_data(dataset_name, f"{DATA_PATH}/{dataset_name}")
+    test_mask: torch.Tensor = dataset[0].test_mask  # ty: ignore[unresolved-attribute]
     data: Data = cast(Data, dataset[0])
 
-    # Pass elements to correct device and build data object
+    # Set seed
+    set_seed(0)
+
+    # Pass elements to right dtype
     x: torch.Tensor = data.x.float()
     edge_index: torch.Tensor = data.edge_index.long()
-    node_ids: torch.Tensor = torch.arange(x.shape[0])
-    data: Data = Data(x=x, edge_index=edge_index, node_ids=node_ids)
+
+    # Get 20 examples to make experiments faster
+    node_ids: torch.Tensor = torch.arange(x.shape[0])[test_mask]
+    node_ids = node_ids[torch.randperm(node_ids.shape[0])][:20]
+
+    # Create k-hop dataset
+    subset, _, edge_index = k_hop_subgraph(node_ids, num_hops=2, edge_index=edge_index)
+    x = x[subset]
+    data: Data = Data(x=x, edge_index=edge_index, node_ids=torch.arange(x.shape[0]))
 
     # Load model
     model: torch.nn.Module
