@@ -225,7 +225,7 @@ def add_results(
         explainer,
         xai_type,
         num_clusters,
-        0.0,
+        1.0,
         data,
         checkpoints_folder_path,
         device,
@@ -332,3 +332,7 @@ def draw_figures(
     plt.close()
 
     return None
+
+
+if __name__ == "__main__":
+    main()
