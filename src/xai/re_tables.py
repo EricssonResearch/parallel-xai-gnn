@@ -93,8 +93,8 @@ def main() -> None:
                     "original",
                     explainer,
                     data,
-                    None,
-                    None,
+                    1,
+                    1.0,
                     None,
                     checkpoints_folder_path,
                     device,
@@ -103,14 +103,14 @@ def main() -> None:
 
                 # Iterate over cluster size and dropout rate
                 for num_clusters in NUM_CLUSTERS:
-                    for dropout_rate in RATES:
+                    for rate in RATES:
                         add_results(
                             results,
                             "cluster",
                             explainer,
                             data,
                             num_clusters,
-                            dropout_rate,
+                            rate,
                             original_feature_maps,
                             checkpoints_folder_path,
                             device,
@@ -132,7 +132,7 @@ def main() -> None:
                         progress_bar,
                     )
 
-                # Build dataframe
+                # Build original dataframe
                 df = pd.DataFrame(
                     data=results,
                     columns=[
@@ -152,6 +152,43 @@ def main() -> None:
                     ],  # ty: ignore[invalid-argument-type]
                 )
 
+                # Get filtered df
+                df = pd.DataFrame(
+                    data=df[
+                        [
+                            "Number of Clusters",
+                            "Rate",
+                            "Execution time",
+                            "Increment in Number of Nodes (%)",
+                            "Increment in Number of Edges (%)",
+                            "Affected neighbors threshold 0.2 (%)",
+                            "Affected neighbors threshold 0.5 (%)",
+                            "Affected neighbors threshold 0.7 (%)",
+                            "Affected nodes threshold 0.2 (%)",
+                            "Affected nodes threshold 0.5 (%)",
+                            "Affected nodes threshold 0.7 (%)",
+                        ]
+                    ].to_numpy(),
+                    columns=(
+                        pd.MultiIndex.from_tuples(
+                            [
+                                ("Number of Clusters", ""),
+                                ("Rate", ""),
+                                ("Execution time (s)", ""),
+                                ("Δnodes (%)", ""),
+                                ("Δedges (%)", ""),
+                                ("Affected explanations (%)", "0.2"),
+                                ("Affected explanations (%)", "0.5"),
+                                ("Affected explanations (%)", "0.7"),
+                                ("Affected nodes (%)", "0.2"),
+                                ("Affected nodes (%)", "0.5"),
+                                ("Affected nodes (%)", "0.7"),
+                            ]
+                        )
+                    ),
+                )
+                df = df.astype({("Number of Clusters", ""): "int16"})
+
                 # Create results dir if it doesn't exist
                 if not os.path.isdir(f"{RESULTS_PATH}"):
                     os.makedirs(f"{RESULTS_PATH}")
@@ -163,21 +200,7 @@ def main() -> None:
                 )
 
                 # Save latex
-                df[
-                    [
-                        "Number of Clusters",
-                        "Rate",
-                        "Execution time",
-                        "Increment in Number of Nodes (%)",
-                        "Increment in Number of Edges (%)",
-                        "Affected nodes threshold 0.2 (%)",
-                        "Affected nodes threshold 0.5 (%)",
-                        "Affected nodes threshold 0.7 (%)",
-                        "Affected neighbors threshold 0.2 (%)",
-                        "Affected neighbors threshold 0.5 (%)",
-                        "Affected neighbors threshold 0.7 (%)",
-                    ]
-                ].to_latex(
+                df.to_latex(
                     f"{RESULTS_PATH}/{dataset_name}_{model_name}_{method_name}.tex",
                     index=False,
                     float_format="%.2f",
